@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE workflow [
+
+<!ENTITY USER "REL_USER">
+<!ENTITY ACCOUNT "NMMM0015">
+<!--<!ENTITY ACCOUNT "P48503002">-->
+<!--<!ENTITY ACCOUNT "P48500053">-->
+<!ENTITY SCHED "pbspro">
+<!--<!ENTITY QUEUE_REG "regular">-->
+<!ENTITY QUEUE_REG "regular">
+
+<!-- Location of bin, exec, static, xml dirs. -->
+<!-- bin - has the wrapper scripts that are called from this workflow. -->
+<!-- exec - has links to all the source area executables. -->
+<!ENTITY HOMEBASE_DIR "REL_DIR">
+
+<!-- The EXPERIMENT Parent Directory under which
+     all output for all the members will be written. -->
+<!ENTITY EXPERIMENT_DIR "REL_DIR">
+<!ENTITY DATABASE_DIR "REL_DIR">
+
+<!ENTITY LOG_DIR "&DATABASE_DIR;/log">
+<!ENTITY DATAROOT "&DATABASE_DIR;">
+
+<!ENTITY FCST_DIR "/glade/scratch/schwartz/met/draft_3rd/FCST">
+<!ENTITY OBS_DIR "/glade/scratch/schwartz/OBS">
+
+<!ENTITY SCRIPTS "&HOMEBASE_DIR;/bin">
+<!ENTITY STATIC_DIR "&HOMEBASE_DIR;/static">
+
+<!--<!ENTITY UNIPOST_EXEC "&HOMEBASE_DIR;/exec/UPP">-->
+<!ENTITY UNIPOST_EXEC "/glade/p/ral/jntp/UPP/releases/cheyenne/UPPV3.2/bin">
+<!--<!ENTITY MET_BASE "&HOMEBASE_DIR;/code/MET/met-7.0/data">-->
+<!ENTITY MET_BASE "/glade/p/ral/jntp/MET/MET_releases/8.0/met-8.0/data">
+<!--<!ENTITY MET_EXEC "&HOMEBASE_DIR;/exec/MET">-->
+<!ENTITY MET_EXEC "/glade/p/ral/jntp/MET/MET_releases/8.0/bin">
+<!ENTITY WGRIB "/gpfs/fs1/p/ral/jntp/tools/grib2/wgrib2/wgrib2">
+<!ENTITY MET_CONFIG "&STATIC_DIR;/MET/met_config">
+
+<!ENTITY MET_QPF_RESOURCES "<walltime>00:10:00</walltime>">
+
+<!-- NOTE THAT MEMORY FOR SHARED JOBS IS INTERPRETED AS PER-PROCESS -->
+
+<!ENTITY RESERVATION_REG '<queue>&QUEUE_REG;</queue><account>&ACCOUNT;</account>'>  
+
+]>
+
+<workflow realtime="F" scheduler="&SCHED;" cyclethrottle="5" taskthrottle="50">
+
+  <log>
+    <cyclestr>&LOG_DIR;/workflow_@Y@m@d@H.log</cyclestr>
+  </log>
+
+  <cycledef group="group0">201811010000 201811020000 00:24:00:00</cycledef>
+
+  <metatask>
+    <var name="vx_obs">SATCORPS SATCORPS MERRA2 MERRA2</var>
+    <var name="vx_var">totalCloudFrac lowCloudFrac totalCloudFrac lowCloudFrac</var>
+
+    <metatask>
+	  
+      <var name="fcsthour">03 06 09 12 15 18 21 24 27 30 33 36 39 42 45 48</var>
+      
+      <task name="grid_stat_#vx_obs#_#vx_var#_#fcsthour#" cycledefs="group0" maxtries="1">
+	
+	&MET_QPF_RESOURCES;
+	&RESERVATION_REG;
+	
+	<command>&SCRIPTS;/MET/driver_script_with_python.ksh</command>
+	<cores>1</cores>
+	<nodesize>36</nodesize>
+	<jobname><cyclestr>met_grid_stat_#vx_obs#_#vx_var#_@H_#fcsthour#</cyclestr></jobname>
+	<join><cyclestr>&LOG_DIR;/met_grid_stat_#vx_obs#_#vx_var#_@Y@m@d@H00_#fcsthour#.log</cyclestr></join> 
+    
+	<envar>
+	  <name>START_TIME</name>
+	  <value><cyclestr>@Y@m@d@H</cyclestr></value>
+	</envar>
+	<envar>
+	  <name>FCST_TIME_LIST</name>
+	  <value>#fcsthour#</value>
+	</envar>
+	<envar>
+	  <name>VX_OBS_LIST</name>
+	  <value>#vx_obs#</value>
+	</envar>
+	<envar>
+	  <name>VX_VAR_LIST</name>
+	  <value>#vx_var#</value>
+	</envar>
+	<envar>
+	  <name>DOMAIN_LIST</name>
+	  <value>global</value>
+	</envar>
+	<envar>
+          <name>GRID_VX</name>
+          <value>FCST</value>
+	</envar>
+	<envar>
+	  <name>MET_EXE_ROOT</name>
+	  <value>&MET_EXEC;</value>
+	</envar>
+	<envar>
+	  <name>MET_CONFIG</name>
+	  <value>&MET_CONFIG;</value>
+	</envar>
+	<envar>
+          <name>DATAROOT</name>
+	  <value><cyclestr>&DATAROOT;</cyclestr></value>
+	</envar>
+	<envar>
+          <name>FCST_DIR</name>
+	  <value><cyclestr>&FCST_DIR;</cyclestr></value>
+	</envar>
+	<envar>
+          <name>RAW_OBS</name>
+          <value><cyclestr>&OBS_DIR;</cyclestr></value>
+	</envar>
+	<envar>
+          <name>MODEL</name>
+          <value>GFS</value>
+	</envar>
+	
+	<dependency>
+	<and>
+          <datadep age="60">&FCST_DIR;/<cyclestr>@Y@m@d@H/gfs.0p25.@Y@m@d@H.f0#fcsthour#.grib2</cyclestr></datadep>
+          <or>
+	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/GEO-MRGD.@Y@j.@H00.GRID.NC</cyclestr></datadep>
+	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/#vx_obs#_400.tavg1_2d_@Y@m@d_@H30.nc4</cyclestr></datadep>
+	  </or>
+	</and>
+	</dependency>
+	
+      </task> <!--task name="met_grid_stat"-->
+      
+    </metatask> <!--#fcsthour#-->
+
+  </metatask> <!--#vx_obs# and #vx_var# for SATCORPS, MERRA2-->
+
+  <metatask>
+    <var name="vx_obs">ERA5 ERA5</var>
+    <var name="vx_var">totalCloudFrac lowCloudFrac</var>
+
+    <metatask>
+	  
+      <var name="fcsthour">06 12 18 24 30 36 42 48</var>
+      
+      <task name="grid_stat_#vx_obs#_#vx_var#_#fcsthour#" cycledefs="group0" maxtries="1">
+	
+	&MET_QPF_RESOURCES;
+	&RESERVATION_REG;
+	
+	<command>&SCRIPTS;/MET/driver_script_with_python.ksh</command>
+	<cores>1</cores>
+	<nodesize>36</nodesize>
+	<jobname><cyclestr>met_grid_stat_#vx_obs#_#vx_var#_@H_#fcsthour#</cyclestr></jobname>
+	<join><cyclestr>&LOG_DIR;/met_grid_stat_#vx_obs#_#vx_var#_@Y@m@d@H00_#fcsthour#.log</cyclestr></join> 
+    
+	<envar>
+	  <name>START_TIME</name>
+	  <value><cyclestr>@Y@m@d@H</cyclestr></value>
+	</envar>
+	<envar>
+	  <name>FCST_TIME_LIST</name>
+	  <value>#fcsthour#</value>
+	</envar>
+	<envar>
+	  <name>VX_OBS_LIST</name>
+	  <value>#vx_obs#</value>
+	</envar>
+	<envar>
+	  <name>VX_VAR_LIST</name>
+	  <value>#vx_var#</value>
+	</envar>
+	<envar>
+	  <name>DOMAIN_LIST</name>
+	  <value>global</value>
+	</envar>
+	<envar>
+          <name>GRID_VX</name>
+          <value>FCST</value>
+	</envar>
+	<envar>
+	  <name>MET_EXE_ROOT</name>
+	  <value>&MET_EXEC;</value>
+	</envar>
+	<envar>
+	  <name>MET_CONFIG</name>
+	  <value>&MET_CONFIG;</value>
+	</envar>
+	<envar>
+          <name>DATAROOT</name>
+	  <value><cyclestr>&DATAROOT;</cyclestr></value>
+	</envar>
+	<envar>
+          <name>FCST_DIR</name>
+	  <value><cyclestr>&FCST_DIR;</cyclestr></value>
+	</envar>
+	<envar>
+          <name>RAW_OBS</name>
+          <value><cyclestr>&OBS_DIR;</cyclestr></value>
+	</envar>
+	<envar>
+          <name>MODEL</name>
+          <value>GFS</value>
+	</envar>
+	
+	<dependency>
+	<and>
+          <datadep age="60">&FCST_DIR;/<cyclestr>@Y@m@d@H/gfs.0p25.@Y@m@d@H.f0#fcsthour#.grib2</cyclestr></datadep>
+	  <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/#vx_obs#_@Y@m@d@H.nc</cyclestr></datadep>
+	</and>
+	</dependency>
+	
+      </task> <!--task name="met_grid_stat"-->
+      
+    </metatask> <!--#fcsthour#-->
+
+  </metatask> <!--#vx_obs# and #vx_var# for ERA5-->
+
+</workflow>
