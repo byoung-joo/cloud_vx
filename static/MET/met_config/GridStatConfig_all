@@ -41,7 +41,7 @@ regrid = {
 // May be set separately in each "field" entry
 //
 censor_thresh = [ <0 ];
-censor_val    = [-9999];
+censor_val    = [ -9999 ];
 cnt_thresh    = [ NA ];
 cnt_logic     = UNION;
 wind_thresh   = [ NA ];
@@ -168,7 +168,7 @@ ci_alpha  = [ 0.10, 0.05 ];
 //
 nbrhd = {
    field      = BOTH;
-   width      = [ 1, 3 ]; // make this more flexible
+   width      = [ 3, 5 ]; // make this more flexible
    cov_thresh = [ >0 ];
    vld_thresh = 1.0;
    shape      = CIRCLE;
@@ -198,9 +198,9 @@ output_flag = {
    cnt    = STAT;
    sl1l2  = STAT;
    sal1l2 = NONE;
-   vl1l2  = STAT;
+   vl1l2  = NONE;
    val1l2 = NONE;
-   vcnt   = STAT;
+   vcnt   = NONE;
    pct    = NONE;
    pstd   = NONE;
    pjc    = NONE;
