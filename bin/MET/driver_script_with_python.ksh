@@ -2,12 +2,7 @@
 
 ##########################################################################
 #
-# Script Name: met_qpf_verf_all.ksh
-#
-#      Author: John Halley Gotway
-#              NCAR/RAL/DTC
-#
-#    Released: 10/26/2010
+# Script Name: driver_script_with_python.ksh
 #
 # Description:
 #    This script runs the MET/Grid-Stat and MODE tools to verify gridded
@@ -17,10 +12,14 @@
 #
 #             START_TIME = The cycle time to use for the initial time.
 #              FCST_TIME = The three-digit forecasts that is to be verified.
+#            VX_OBS_LIST = A list of observation sources to be used.
+#            VX_VAR_LIST = A list of observed variables to be used.
 #            DOMAIN_LIST = A list of domains to be verified.
+#                GRID_VX = Defines the grid forecast and obs will be mapped to.
 #           MET_EXE_ROOT = The full path of the MET executables.
 #             MET_CONFIG = The full path of the MET configuration files.
 #               DATAROOT = Top-level data directory of WRF output.
+#               FCST_DIR = Directory containing the forecasts to be used.
 #                RAW_OBS = Directory containing observations to be used.
 #                  MODEL = The model being evaluated.
 #
@@ -166,6 +165,12 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
     fi
 
+    # Make sure FCST_FILE exists
+    if [ ! -e ${FCST_FILE} ]; then
+        ${ECHO} "ERROR: Could not find forecast file: ${FCST_FILE}"
+        exit 1
+    fi
+
     # TODO: add more FCST variables
         # GFS for now
             #PRESlclt   0,213,0   0,3,0,0 ** low cloud top level Pressure [Pa]
@@ -200,19 +205,10 @@ for DOMAIN in ${DOMAIN_LIST}; do
             exit 1
         fi
 
-        # Get the forecast to verify
-        FCST_HRS=$(printf "%03d" ${FCST_TIME})  #for GFS name
-	FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-
-        if [ ! -e ${FCST_FILE} ]; then
-          ${ECHO} "ERROR: Could not find met_ens output file: ${FCST_FILE}"
-          exit 1
-        fi
-
         # Get the processed observation file 
         if [ ${VX_OBS} == "SATCORPS" ]; then
           JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
-          OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+          OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
         elif  [ ${VX_OBS} == "MERRA2" ]; then
           TMP=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} +30min`  #TODO: 30 min offset
           TMP_YYYYMMDD=`echo ${TMP} | cut -c1-8`
