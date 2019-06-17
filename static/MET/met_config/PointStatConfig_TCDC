@@ -15,7 +15,7 @@ model = "${MODEL}";
 // Output description to be written
 // May be set separately in each "obs.field" entry
 //
-desc = "TCDC";
+desc = "Cloud_Mask";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -215,14 +215,14 @@ output_flag = {
    prc    = NONE;
    ecnt   = NONE; // Only for HiRA.
    eclv   = NONE;
-   mpr    = STAT;
+   mpr    = NONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 rank_corr_flag = FALSE;
 tmp_dir        = "/tmp";
-output_prefix  = "${MODEL}_F${FCST_TIME}_TCDC_MPR";
+output_prefix  = "${MODEL}_F${FCST_TIME}_TCDC";
 version        = "V8.0";
 
 ////////////////////////////////////////////////////////////////////////////////

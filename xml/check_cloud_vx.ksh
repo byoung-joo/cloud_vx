@@ -6,7 +6,8 @@ pwd
 
 cycle="201811010000"
 #task="grid_stat_MERRA2_lowCloudFrac_03"
-task="point_stat_EPIC_Cloud_Mask_00"
+#task="point_stat_EPIC_Cloud_Mask_00"
+task="grid_stat_SATCORPS_totalCloudFrac_03"
 
 ${pathroc}/bin/rocotocheck -w ${pathnam}/cloud_vx.xml -d ${pathnam}/cloud_vx.db -c ${cycle} -t ${task}
 

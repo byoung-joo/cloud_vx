@@ -48,8 +48,8 @@ ncar_pylib
 #export DOMAIN_LIST="global"
 #export GRID_VX="NONE"
 #export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.0/bin  #/glade/p/ral/jnt/HRRR/retro/exec/MET
-#export MET_CONFIG=/glade/scratch/jwolff/CAF/met/draft_3rd/static/MET/met_config   #/glade/p/ral/jnt/HRRR/retro/static.harrold/MET/met_config
-#export DATAROOT=/glade/scratch/jwolff/CAF/met/draft_3rd  #/glade/scratch/harrold/2015100312
+#export MET_CONFIG=REL_DIR/static/MET/met_config
+#export DATAROOT=REL_DIR
 #export FCST_DIR=/glade/scratch/jwolff/CAF/met/draft_1st/FCST
 #export RAW_OBS=/glade/scratch/jwolff/CAF/met/draft_3rd/OBS    #/glade/scratch/jfrimel/init/obs/201510/mrms_grb2
 #export MODEL="GFS"  #"hrconus"
@@ -140,7 +140,7 @@ ${ECHO} 'valid time for ' ${FCST_TIME} 'h forecast = ' ${VDATE}
 ########################################################################
 
 # Go to processed nc dir
-metnc=${RAW_OBS}/${VX_OBS}/nc
+metnc=${RAW_OBS}/${VX_OBS}
 ${MKDIR} -p ${metnc}
 
 # Create a ascii2nc output file name
@@ -181,10 +181,16 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
    # Specify the MET Point-Stat configuration files to be used
    CONFIG_TCDC="${MET_CONFIG}/PointStatConfig_TCDC"
+   CONFIG_TCDC_MPR="${MET_CONFIG}/PointStatConfig_TCDC_MPR"
 
    # Make sure the Point-Stat configuration files exists
    if [ ! -e ${CONFIG_TCDC} ]; then
        ${ECHO} "ERROR: ${CONFIG_TCDC} does not exist!"
+       exit 1
+   fi
+
+   if [ ! -e ${CONFIG_TCDC_MPR} ]; then
+       ${ECHO} "ERROR: ${CONFIG_TCDC_MPR} does not exist!"
        exit 1
    fi
 
@@ -220,6 +226,23 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
    # Verify TCDC variables for each forecast hour
    CONFIG_FILE=${CONFIG_TCDC}
+
+   ${MKDIR} -p ${workdir}/${VX_VAR}/${VX_OBS}
+   cd ${workdir}/${VX_VAR}/${VX_OBS}
+
+   ${ECHO} "CALLING: ${MET_EXE_ROOT}/point_stat ${FCST_FILE} ${OBS_FILE} ${CONFIG_FILE} -outdir . -v 2"
+
+   /usr/bin/time ${MET_EXE_ROOT}/point_stat ${FCST_FILE} ${OBS_FILE} ${CONFIG_FILE} \
+      -outdir . -v 2
+
+   error=$?
+   if [ ${error} -ne 0 ]; then
+     ${ECHO} "ERROR: For ${MODEL}, ${MET_EXE_ROOT}/point_stat ${CONFIG_FILE} crashed  Exit status: ${error}"
+     exit ${error}
+   fi
+
+   # Create MPR file for TCDC variables for each forecast hour
+   CONFIG_FILE=${CONFIG_TCDC_MPR}
 
    ${MKDIR} -p ${workdir}/${VX_VAR}/${VX_OBS}
    cd ${workdir}/${VX_VAR}/${VX_OBS}

@@ -208,7 +208,8 @@ for DOMAIN in ${DOMAIN_LIST}; do
         # Get the processed observation file 
         if [ ${VX_OBS} == "SATCORPS" ]; then
           JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
-          OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+          #OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+	  OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
         elif  [ ${VX_OBS} == "MERRA2" ]; then
           TMP=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} +30min`  #TODO: 30 min offset
           TMP_YYYYMMDD=`echo ${TMP} | cut -c1-8`

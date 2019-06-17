@@ -19,10 +19,8 @@
 <!ENTITY LOG_DIR "&EXPERIMENT_DIR;/log">
 <!ENTITY DATAROOT "&EXPERIMENT_DIR;">
 
-<!--<!ENTITY FCST_DIR "/glade/scratch/schwartz/met/draft_3rd/FCST">
-<!ENTITY OBS_DIR "/glade/scratch/schwartz/OBS">-->
-<!ENTITY FCST_DIR "&HOMEBASE_DIR;/FCST">
-<!ENTITY OBS_DIR "&HOMEBASE_DIR;/OBS">
+<!ENTITY FCST_DIR "/glade/scratch/schwartz/met/draft_3rd/FCST">
+<!ENTITY OBS_DIR "/glade/scratch/schwartz/OBS">
 
 <!ENTITY SCRIPTS "&HOMEBASE_DIR;/bin">
 <!ENTITY STATIC_DIR "&HOMEBASE_DIR;/static">
@@ -44,7 +42,7 @@
 
 ]>
 
-<workflow realtime="F" scheduler="&SCHED;" cyclethrottle="10" taskthrottle="50">
+<workflow realtime="F" scheduler="&SCHED;" cyclethrottle="10" taskthrottle="150">
 
   <log>
     <cyclestr>&LOG_DIR;/workflow_@Y@m@d@H.log</cyclestr>
@@ -124,7 +122,8 @@
 	<and>
           <datadep age="60">&FCST_DIR;/<cyclestr>@Y@m@d@H/gfs.0p25.@Y@m@d@H.f0#fcsthour#.grib2</cyclestr></datadep>
           <or>
-	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/prod.Global-GEO.visst-grid-netcdf.@Y@m@d.GEO-MRGD.@Y@j.@H00.GRID.NC</cyclestr></datadep>
+	    <!--<datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/prod.Global-GEO.visst-grid-netcdf.@Y@m@d.GEO-MRGD.@Y@j.@H00.GRID.NC</cyclestr></datadep>-->
+	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/GEO-MRGD.@Y@j.@H00.GRID.NC</cyclestr></datadep>
 	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/#vx_obs#_400.tavg1_2d_@Y@m@d_@H30.nc4</cyclestr></datadep>
 	  </or>
 	</and>
@@ -221,7 +220,7 @@
     <var name="vx_obs">EPIC</var>
     <var name="vx_var">Cloud_Mask</var>
 
-    <metatask>
+    <metatask name="point_stat">
 	  
       <var name="fcsthour">03 06 09 12 15 18 21 24 27 30 33 36 39 42 45 48</var>
       
@@ -290,7 +289,7 @@
           <datadep age="60">&FCST_DIR;/<cyclestr>@Y@m@d@H/gfs.0p25.@Y@m@d@H.f0#fcsthour#.grib2</cyclestr></datadep>
 	  <or>
 	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/ascii/ascii_@Y@m@d@H_#vx_var#.txt</cyclestr></datadep>
-	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/nc/#vx_obs#_@Y@m@d@H_#vx_var#.nc</cyclestr></datadep>
+	    <datadep age="60">&OBS_DIR;/<cyclestr offset="#fcsthour#:00:00">#vx_obs#/#vx_obs#_@Y@m@d@H_#vx_var#.nc</cyclestr></datadep>
 	  </or>
 	</and>
 	</dependency>
