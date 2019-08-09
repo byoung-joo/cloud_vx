@@ -20,12 +20,12 @@ obsDatasets =  {
    'MERRA2'   : { 'gridType':'LatLon',   'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, },
    'SATCORPS' : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, },
    'ERA5'     : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280],   'flipY':False, },
-   #TODO:Correct one, but MET can ingest a Gaussia grid only in Grib2 format (from Randy B.)
+   #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
    #'ERA5'     : { 'gridType':'Gaussian', 'nx':1280, 'ny':640, 'lon_zero':0, 'latVar':'latitude', 'lonVar':'longitude', 'flipY':False, },
 }
 
 verifVariables = {
-   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'>=0.0', 'interpMethod':'nearest' },
+   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'>0.0', 'interpMethod':'nearest' },
    'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
    'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
    'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
@@ -68,8 +68,8 @@ def getTotalCloudFrac(source,data):
 
 def getBinaryCloud(source,data):
    y = getTotalCloudFrac(source,data)
-   # keep NaNs as is, but then set everything else to either a 1 or 0
-   x = np.where( np.isnan(y), y, np.where(y > 0.0, 1.0, 0.0) )
+   # keep NaNs as is, but then set everything else to either 100% or 0%
+   x = np.where( np.isnan(y), y, np.where(y > 0.0, 100.0, 0.0) )
    return x
 
 def getLayerCloudFrac(source,data,layer):

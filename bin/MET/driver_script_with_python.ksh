@@ -41,18 +41,19 @@ module load met/8.0
 ncar_pylib
 
 # Vars used for manual testing of the script
-#export START_TIME=2018110100
+#export START_TIME=2017060400 #2018110100
 #export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
 #export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
-#export VX_VAR_LIST="totalCloudFrac lowCloudFrac" #totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac cloudTopTemp cloudTopPres" #binaryCloud"
+#export VX_VAR_LIST="totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres 
 #export DOMAIN_LIST="global"
 #export GRID_VX="FCST"
 #export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.0/bin
-#export MET_CONFIG=REL_DIR/static/MET/met_config
-#export DATAROOT=REL_DIR
-#export FCST_DIR=/glade/scratch/schwartz/met/draft_3rd/FCST
+#export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
+#export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
+##export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
+#export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM
 #export RAW_OBS=/glade/scratch/schwartz/OBS
-#export MODEL="GFS"
+#export MODEL="GALWEM" # Options are "GFS" or "GALWEM"
 
 # Print run parameters
 ${ECHO}
@@ -68,7 +69,6 @@ ${ECHO} "  MET_EXE_ROOT = ${MET_EXE_ROOT}"
 ${ECHO} "    MET_CONFIG = ${MET_CONFIG}"
 ${ECHO} "      DATAROOT = ${DATAROOT}"
 ${ECHO} "      FCST_DIR = ${FCST_DIR}"
-${ECHO} "       GRID_VX = ${GRID_VX}"
 ${ECHO} "       RAW_OBS = ${RAW_OBS}"
 ${ECHO} "         MODEL = ${MODEL}"
 
@@ -129,7 +129,8 @@ for DOMAIN in ${DOMAIN_LIST}; do
     ${ECHO} "FCST_TIME=${FCST_TIME}"
 
     # Compute the verification date
-    YYYYMMDD=`${ECHO} ${START_TIME} | ${CUT} -c1-8`
+    YYYYMMDD=`${ECHO} ${START_TIME} | ${CUT} -c1-8` # Forecast initialization time
+    MMDD=`${ECHO} ${START_TIME} | ${CUT} -c5-8`
     HHMMSS=`${DATAROOT}/exec/da_advance_time.exe ${START_TIME} 0 -F hhnnss`
     HH=`${ECHO} ${START_TIME} | ${CUT} -c9-10`
     VDATE=`${DATAROOT}/exec/da_advance_time.exe ${START_TIME} +${FCST_TIME}` # Valid time
@@ -154,15 +155,20 @@ for DOMAIN in ${DOMAIN_LIST}; do
     GS_CONFIG_LIST="${MET_CONFIG}/GridStatConfig_all"  # CSS, I feel like this should be defined elsewhere...
 
     # Get the forecast to verify
-    if [ ${FCST_TIME} == "09" ]; then
-	
-	FCST_HRS=$(printf "%03d" ${FCST_TIME##+(0)})  #for GFS name
-	FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-	FCST_TIME=$(printf "%01d" ${FCST_TIME##+(0)})
+    if [ ${FCST_TIME} == "09" ]; then # Need some weird logic for FCST_TIME = 09
+	FCST_HRS=$(printf "%03d" ${FCST_TIME##+(0)})  #3-digit hour for GFS name
+	FCST_TIME=$(printf "%01d" ${FCST_TIME##+(0)}) #1-digit...this line probably not needed
     else
-	
-        FCST_HRS=$(printf "%03d" ${FCST_TIME})  #for GFS name
-	FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
+        FCST_HRS=$(printf "%03d" ${FCST_TIME})  #3-digit hour for GFS name
+    fi
+
+    if [ ${MODEL} == "GFS" ]; then
+       FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
+    elif [ ${MODEL} == "GALWEM" ]; then
+       FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
+    else
+        ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
+        exit 1
     fi
 
     # Make sure FCST_FILE exists
@@ -179,16 +185,30 @@ for DOMAIN in ${DOMAIN_LIST}; do
             #TMPlclt   0,213,0   0,0,0,0 ** low cloud top level Temperature [K]
             #TMPmclt   0,223,0   0,0,0,0 ** middle cloud top level Temperature [K]
             #TMPhclt   0,233,0   0,0,0,0 ** high cloud top level Temperature [K]
-    if [ $VX_VAR == "totalCloudFrac" ]; then
-        export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
-    elif [ $VX_VAR == "lowCloudFrac" ]; then
-        export metConfName="TCDC";export metConfGribLvlTyp=214;export metConfGribLvlVal1=0
-    elif [ $VX_VAR == "midCloudFrac" ]; then
-        export metConfName="TCDC";export metConfGribLvlTyp=224;export metConfGribLvlVal1=0
-    elif [ $VX_VAR == "highCloudFrac" ]; then
-        export metConfName="TCDC";export metConfGribLvlTyp=234;export metConfGribLvlVal1=0
-    elif [ $VX_VAR == "binaryCloud"    ]; then
-        export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+    if [ $MODEL == "GFS" ]; then
+       if [ $VX_VAR == "totalCloudFrac" ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "lowCloudFrac" ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=214;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "midCloudFrac" ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=224;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "highCloudFrac" ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=234;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "binaryCloud"    ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       fi
+    elif [ $MODEL == "GALWEM" ]; then
+       if [ $VX_VAR == "totalCloudFrac" ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "lowCloudFrac" ]; then
+	   export metConfName="LCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "midCloudFrac" ]; then
+	   export metConfName="MCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "highCloudFrac" ]; then
+	   export metConfName="HCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "binaryCloud"    ]; then
+	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       fi
     fi
 
     #######################################################################
@@ -207,9 +227,9 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
         # Get the processed observation file 
         if [ ${VX_OBS} == "SATCORPS" ]; then
-          JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
-          #OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
-	  OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+           JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
+           OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+	  #OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
         elif  [ ${VX_OBS} == "MERRA2" ]; then
           TMP=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} +30min`  #TODO: 30 min offset
           TMP_YYYYMMDD=`echo ${TMP} | cut -c1-8`
