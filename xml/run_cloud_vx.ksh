@@ -1,5 +1,5 @@
 #!/bin/ksh
-pathnam=REL_DIR/xml
+pathnam=/glade/scratch/`whoami`/cloud_vx/xml
 pathroc=/glade/u/home/harrop/opt/rocoto/1.2.4-p1
 
 pwd
