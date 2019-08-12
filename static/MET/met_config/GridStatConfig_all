@@ -55,11 +55,12 @@ fcst = {
 
    field = [
       {
-        name       = "${metConfName}";
-        GRIB_lvl_typ = ${metConfGribLvlTyp};
-        GRIB_lvl_val1 = ${metConfGribLvlVal1};
+//        name       = "${metConfName}";
+//        GRIB_lvl_typ = ${metConfGribLvlTyp};
+//        GRIB_lvl_val1 = ${metConfGribLvlVal1};
 //        level      = [ "R320" ];
 //        cat_thresh = [ >=100, >=50 ];
+          name       = "python_script_fcst.py";
         cat_thresh = ${thresholds};
       }
    ];
