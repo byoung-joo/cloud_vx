@@ -2,7 +2,8 @@
 
 <!DOCTYPE workflow [
 
-<!ENTITY USER "REL_USER">
+<!--<!ENTITY USER "REL_USER"> -->
+<!ENTITY USER "schwartz">
 <!ENTITY ACCOUNT "NMMM0015">
 <!ENTITY SCHED "pbspro">
 <!ENTITY QUEUE_REG "regular">
@@ -10,16 +11,19 @@
 <!-- Location of bin, exec, static, xml dirs. -->
 <!-- bin - has the wrapper scripts that are called from this workflow. -->
 <!-- exec - has links to all the source area executables. -->
-<!ENTITY HOMEBASE_DIR "REL_DIR">
+<!--<!ENTITY HOMEBASE_DIR "REL_DIR"> -->
+<!ENTITY HOMEBASE_DIR "/glade/scratch/&USER;/cloud_vx">
 
 <!-- The EXPERIMENT Parent Directory under which
      all output for all the members will be written. -->
-<!ENTITY EXPERIMENT_DIR "REL_DIR">
+<!--<!ENTITY EXPERIMENT_DIR "REL_DIR"> -->
+<!ENTITY EXPERIMENT_DIR "/glade/scratch/&USER;/cloud_vx">
 
 <!ENTITY LOG_DIR "&EXPERIMENT_DIR;/log">
 <!ENTITY DATAROOT "&EXPERIMENT_DIR;">
 
-<!ENTITY FCST_DIR "/glade/scratch/schwartz/met/draft_3rd/FCST">
+<!--<!ENTITY FCST_DIR "/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg">-->
+<!ENTITY FCST_DIR "/glade/scratch/schwartz/GALWEM">
 <!ENTITY OBS_DIR "/glade/scratch/schwartz/OBS">
 
 <!ENTITY SCRIPTS "&HOMEBASE_DIR;/bin">
