@@ -42,9 +42,9 @@ ncar_pylib
 
 # Vars used for manual testing of the script
 export START_TIME=2017060400 #2018110100
-export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
-export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
-export VX_VAR_LIST="totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres 
+export FCST_TIME_LIST="06" # 6 9 12 24 36 48"
+export VX_OBS_LIST="SATCORPS" # ERA5" # MERRA2 ERA5" #ERA5"
+export VX_VAR_LIST="totalCloudFrac cloudBaseHeight" #totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres 
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
 export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.0/bin
@@ -208,6 +208,12 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	   export metConfName="HCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        elif [ $VX_VAR == "binaryCloud"    ]; then
 	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "cloudTopHeight" ]; then
+	   export metConfName="CDCTOP";export metConfGribLvlTyp=3;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "cloudBaseHeight" ]; then
+	   export metConfName="CDCB";export metConfGribLvlTyp=2;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "cloudCeiling" ]; then
+	   export metConfName="CEIL";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        fi
     fi
 

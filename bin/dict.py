@@ -25,13 +25,16 @@ obsDatasets =  {
 }
 
 verifVariables = {
-   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'>0.0', 'interpMethod':'nearest' },
-   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'thresholds':'NA', 'interpMethod':'bilin'},
+   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
+   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'units':'K',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'units':'hPa', 'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
 }
 
 # to read in an environmental variable
@@ -100,6 +103,33 @@ def getCloudTopPres(source,data):
       x = data[0][0,:,:] * 1.0E-2  # scaling [Pa] -> [hPa]
    elif source == 'ERA5':
       x = data[0][0,0,:,:]
+   return x
+
+def getCloudTopHeight(source,data):
+   if source == 'SATCORPS':
+      x = data[0][0,:,:,0] * 1.0E+1  # scaling to [meters]
+   elif source == 'MERRA2':
+      x = data[0][0,:,:]     #TBD
+   elif source == 'ERA5':
+      x = data[0][0,0,:,:]   #TBD
+   return x
+
+def getCloudBaseHeight(source,data):
+   if source == 'SATCORPS':
+      x = data[0][0,:,:,0] * 1.0E+1  # scaling to [meters]
+   elif source == 'MERRA2':
+      x = data[0][0,:,:]     #TBD
+   elif source == 'ERA5':
+      x = data[0][0,0,:,:]
+   return x
+
+def getCloudCeiling(source,data):
+   if source == 'SATCORPS':
+      x = data[0][0,:,:,0]   #TBD
+   elif source == 'MERRA2':
+      x = data[0][0,:,:]     #TBD
+   elif source == 'ERA5':
+      x = data[0][0,0,:,:]   #TBD
    return x
 
 # add other functions for different variables
@@ -173,6 +203,9 @@ def getDataArray(fcstFile,obsFile,obsSource,variable,validTime):
    if variable == 'highCloudFrac':   raw_data = getLayerCloudFrac(obsSource,data,'high')
    if variable == 'cloudTopTemp':    raw_data = getCloudTopTemp(obsSource,data)
    if variable == 'cloudTopPres':    raw_data = getCloudTopPres(obsSource,data)
+   if variable == 'cloudTopHeight':  raw_data = getCloudTopHeight(obsSource,data)
+   if variable == 'cloudBaseHeight': raw_data = getCloudBaseHeight(obsSource,data)
+   if variable == 'cloudCeiling':    raw_data = getCloudCeiling(obsSource,data)
 
    raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
 
@@ -238,7 +271,7 @@ def getAttrArray(obsSource,variable,initialTimeYMD,initialTimeHMS,validTimeYMD,v
       'name':      obsSource,  #'MERRA2_Cloud_Percentage'
       'long_name': variable,  #'Cloud Percentage Levels',
       'level':     'ALL',
-      'units':     '%',
+      'units':     verifVariables[variable]['units'],
 
       'grid': getGridInfo(obsSource,obsDatasets[obsSource]['gridType'])
    }
