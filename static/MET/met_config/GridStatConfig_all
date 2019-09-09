@@ -55,12 +55,22 @@ fcst = {
 
    field = [
       {
+          // Use this if reading directly from GRIB2 file
 //        name       = "${metConfName}";
 //        GRIB_lvl_typ = ${metConfGribLvlTyp};
 //        GRIB_lvl_val1 = ${metConfGribLvlVal1};
+
 //        level      = [ "R320" ];
 //        cat_thresh = [ >=100, >=50 ];
-          name       = "python_script_fcst.py";
+
+          // Use this if doing python embedding
+//        name       = "python_script_fcst.py";
+
+          // Use this if reading from temporary GRIB2 file
+	  // created by running python code
+          name       = "APCP";
+          level      = [ "R01" ];
+
         cat_thresh = ${thresholds};
       }
    ];

@@ -34,20 +34,27 @@ CP=/bin/cp
 CUT=`which cut`
 DATE=/bin/date
 
+#source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
+#module purge
+#module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
+#module load met/8.0_python
+#ncar_pylib
+
 source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
 module purge
 module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
-module load met/8.0
+module load met/8.1_python
 ncar_pylib
+
 
 # Vars used for manual testing of the script
 export START_TIME=2017060500 #2018110100
 export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
 export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
-export VX_VAR_LIST="totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres 
+export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
-export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.0/bin
+export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
@@ -208,6 +215,12 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	   export metConfName="HCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        elif [ $VX_VAR == "binaryCloud"    ]; then
 	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "cloudTopHeight" ]; then
+	   export metConfName="CDCTOP";export metConfGribLvlTyp=3;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "cloudBaseHeight" ]; then
+	   export metConfName="CDCB";export metConfGribLvlTyp=2;export metConfGribLvlVal1=0
+       elif [ $VX_VAR == "cloudCeiling" ]; then
+	   export metConfName="CEIL";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        fi
     fi
 
@@ -258,7 +271,6 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	   export regrid_width=1
 	fi
         echo "THRESHOLDS = $thresholds"
-        echo "regrid_width =  $regrid_width"
 
         for i in 1 2; do
 	   if [ $i == 1 ]; then
@@ -275,6 +287,7 @@ for DOMAIN in ${DOMAIN_LIST}; do
 import os
 import numpy as np
 import python_stuff  # this is where all the work is done
+
 #fcstFile = '$FCST_FILE'
 #obsFile = '$OBS_FILE'
 dataFile = '$dataFile'
@@ -290,17 +303,25 @@ met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${VDATE},${i})
 # TODO: This is for "obs". If we ingest forecast later, we need to improve this.
 attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
 #attrs = dict.getAttrArray(obsSource,variable,'${VYYYYMMDD}','${VHHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}')
-
 EOF
+
+	   # For the forecast, run the python script OUTSIDE OF MET, while MET crashes with python pygrib routines
+	   #  Within python_stuff.getDataArray, the script will output a temporary GRIB file (temp_fcst.grb2)
+	   #   that can be read into MET directly, but which contains potentially derived fields.
+	   if [ $i == 1 ]; then 
+	      rm -f ./temp_fcst.grb2
+	      python $scriptName # Will create temp_fcst.grb2
+	      FCST_FILE=./temp_fcst.grb2
+	   fi;
 
         done # loop over i=1,2, once for forecast, another for obs
         
         if [[ `echo $CONFIG_FILE | grep -i "gridstat" | wc -l` == 1 ]]; then # CSS note the double brackets in the if statement
-	   ${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat PYTHON_NUMPY PYTHON_NUMPY ${CONFIG_FILE} -outdir  ${workdir}/${VX_VAR}/${VX_OBS} -v 2"
+	   ${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat ${FCST_FILE} PYTHON_NUMPY ${CONFIG_FILE} -outdir  ${workdir}/${VX_VAR}/${VX_OBS} -v 2"
 
 	   # Run grid_stat
 	   ${MET_EXE_ROOT}/grid_stat \
-	     PYTHON_NUMPY \
+	     $FCST_FILE \
 	     PYTHON_NUMPY \
 	     ${CONFIG_FILE} \
 	     -outdir ${workdir}/${VX_VAR}/${VX_OBS} \

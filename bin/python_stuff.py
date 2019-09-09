@@ -39,20 +39,24 @@ midCloudFrac_GFS  =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstF
 highCloudFrac_GFS =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':234, 'shortName':'tcc' }
 
 verifVariablesModel = {
+    'binaryCloud'    :  {'GFS':[''], 'GALWEM':[totalCloudFrac_GALWEM]},
+    'totalCloudFrac' :  {'GFS':[''], 'GALWEM':[totalCloudFrac_GALWEM]},
     'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM':[lowCloudFrac_GALWEM]  },
     'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM':[midCloudFrac_GALWEM]  },
     'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM':[highCloudFrac_GALWEM]  },
-    'totalCloudFrac' :  {'GFS':[''], 'GALWEM':[totalCloudFrac_GALWEM]},
 }
 
 verifVariables = {
-   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'>0.0', 'interpMethod':'nearest' },
-   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
-   'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'thresholds':'NA', 'interpMethod':'bilin'},
+   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
+   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':'<10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
+   'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'units':'K',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'units':'hPa', 'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
 }
 #f = '/glade/u/home/schwartz/cloud_verification/GFS_grib_0.25deg/2018112412/gfs.0p25.2018112412.f006.grib2'
 #grbs = pygrib.open(f)
@@ -136,6 +140,33 @@ def getCloudTopPres(source,data):
       x = data[0][0,0,:,:]
    return x
 
+def getCloudTopHeight(source,data):
+   if source == 'SATCORPS':
+      x = data[0][0,:,:,0] * 1.0E+1  # scaling to [meters]
+   elif source == 'MERRA2':
+      x = data[0][0,:,:]     #TBD
+   elif source == 'ERA5':
+      x = data[0][0,0,:,:]   #TBD
+   return x
+
+def getCloudBaseHeight(source,data):
+   if source == 'SATCORPS':
+      x = data[0][0,:,:,0] * 1.0E+1  # scaling to [meters]
+   elif source == 'MERRA2':
+      x = data[0][0,:,:]     #TBD
+   elif source == 'ERA5':
+      x = data[0][0,0,:,:]
+   return x
+
+def getCloudCeiling(source,data):
+   if source == 'SATCORPS':
+      x = data[0][0,:,:,0]   #TBD
+   elif source == 'MERRA2':
+      x = data[0][0,:,:]     #TBD
+   elif source == 'ERA5':
+      x = data[0][0,0,:,:]   #TBD
+   return x
+
 # add other functions for different variables
 
 ###########
@@ -194,13 +225,12 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
       if dataSource == 1:  # dataSource == 1 means forecast
          # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
 	 x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
-	 print 'here 0'
 	 if x.shortName != v['shortName']: print 'Name mismatch!'
 	 print 'here 1'
+	#read_var, yy = x.latlons() #x.data()[0] # x.values # this somehow works but gives wrong data
 	 read_var = x.values # x.data()[0] # x.values
 	 print 'here 2'
 	 read_missing = x.missingValue
-	 print 'here 3'
 	 print 'Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface
 
       if dataSource == 2:  # dataSource == 2 means obs
@@ -225,6 +255,9 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    if variable == 'highCloudFrac':   raw_data = getLayerCloudFrac(source,data,'high')
    if variable == 'cloudTopTemp':    raw_data = getCloudTopTemp(source,data)
    if variable == 'cloudTopPres':    raw_data = getCloudTopPres(source,data)
+   if variable == 'cloudTopHeight':  raw_data = getCloudTopHeight(obsSource,data)
+   if variable == 'cloudBaseHeight': raw_data = getCloudBaseHeight(obsSource,data)
+   if variable == 'cloudCeiling':    raw_data = getCloudCeiling(obsSource,data)
 
    raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
 
@@ -249,7 +282,22 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 #   plt.colorbar(orientation='horizontal')
 #   plt.savefig(title+".png")
 
-   if dataSource == 1: idx.close()    # Close the GRIB file
+   # If a forecast file, output a GRIB file with 
+   # 1 record containing the met_data
+   # This is a hack, because right now, MET python embedding doesn't work with pygrib,
+   #  so output the data to a temporary file, and then have MET read the temporary grib file.
+   outputFcstFile = True
+   if dataSource == 1: 
+      if outputFcstFile:
+	 grbtmp = x
+	 grbtmp['values']=met_data
+	 grbout = open('temp_fcst.grb2','ab')
+	 grbout.write(grbtmp.tostring())
+	 grbout.close() # Close the outfile GRIB file
+	 print 'Successfully output temp_fcst.grb2'
+
+   # Close files
+   if dataSource == 1: idx.close()    # Close the input GRIB file
    if dataSource == 2: nc_fid.close() # Close the netCDF file
 
    return met_data
@@ -293,7 +341,7 @@ def getAttrArray(source,variable,initialTimeYMD,initialTimeHMS,validTimeYMD,vali
       'name':      source,  #'MERRA2_Cloud_Percentage'
       'long_name': variable,  #'Cloud Percentage Levels',
       'level':     'ALL',
-      'units':     '%',
+      'units':     verifVariables[variable]['units'],
 
       'grid': getGridInfo(source,griddedDatasets[source]['gridType'])
    }
