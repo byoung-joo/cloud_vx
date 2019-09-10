@@ -34,20 +34,27 @@ CP=/bin/cp
 CUT=`which cut`
 DATE=/bin/date
 
+#source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
+#module purge
+#module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
+#module load met/8.0_python
+#ncar_pylib
+
 source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
 module purge
 module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
-module load met/8.0
+module load met/8.1_python
 ncar_pylib
 
+
 # Vars used for manual testing of the script
-export START_TIME=2017060400 #2018110100
-export FCST_TIME_LIST="06" # 6 9 12 24 36 48"
-export VX_OBS_LIST="SATCORPS" # ERA5" # MERRA2 ERA5" #ERA5"
-export VX_VAR_LIST="totalCloudFrac cloudBaseHeight" #totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres 
+export START_TIME=2017060500 #2018110100
+export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
+export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
+export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
-export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.0/bin
+export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
@@ -252,12 +259,12 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	
         ${MKDIR} -p ${workdir}/${VX_VAR}/${VX_OBS}
 	cd ${workdir}/${VX_VAR}/${VX_OBS}
-        ${CP} ${DATAROOT}/bin/dict.py .
+        ${CP} ${DATAROOT}/bin/python_stuff.py .
 
         # CSS get the verification thresholds.
-	# This could be done further up, but we don't copy dict.py until the above line.
-        export thresholds=[`python -c "import dict; print dict.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
-        export interp_method=`python -c "import dict; print dict.getInterpMethod('$VX_VAR')"` 
+	# This could be done further up, but we don't copy python_stuff.py until the above line.
+        export thresholds=[`python -c "import python_stuff; print python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
+        export interp_method=`python -c "import python_stuff; print python_stuff.getInterpMethod('$VX_VAR')"` 
 	if [[ $interp_method == 'BILIN' ]]; then
 	   export regrid_width=2
 	elif [[ $interp_method == 'NEAREST' ]]; then
@@ -265,32 +272,47 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	fi
         echo "THRESHOLDS = $thresholds"
 
-        for i in  2; do
+        for i in 1 2; do
 	   if [ $i == 1 ]; then
 	      scriptName=./python_script_fcst.py
+	      dataFile=${FCST_FILE}
+	      dataSource=${MODEL}
 	   elif [ $i == 2 ]; then
 	      scriptName=./python_script_obs.py
+	      dataFile=${OBS_FILE}
+	      dataSource=${VX_OBS}
 	   fi
 	   ${ECHO} "Python script=$scriptName"
            cat > $scriptName << EOF
 import os
 import numpy as np
-import dict  # this is where all the work is done
-fcstFile = '$FCST_FILE'
-obsFile = '$OBS_FILE'
-obsSource = '$VX_OBS'
+import python_stuff  # this is where all the work is done
+
+#fcstFile = '$FCST_FILE'
+#obsFile = '$OBS_FILE'
+dataFile = '$dataFile'
+dataSource = '$dataSource'
 variable = '$VX_VAR'
 
-# With the data/files/valid_time specified in this script, pass relevant variables to python function (from dict.py)
+# With the data/files/valid_time specified in this script, pass relevant variables to python function (from python_stuff.py)
 # TODO: fcstFile does nothing, yet. Need to resolve "grib2" issue (at least for GFS forecast in grib2)
 # TODO: remove validTime as we will have a separate plotting script.
-met_data = dict.getDataArray(fcstFile,obsFile,obsSource,variable,${VDATE})
+#met_data = dict(fcstFile,obsFile,obsSource,variable,${VDATE})
+met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${VDATE},${i})
 
 # TODO: This is for "obs". If we ingest forecast later, we need to improve this.
-attrs = dict.getAttrArray(obsSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
+attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
 #attrs = dict.getAttrArray(obsSource,variable,'${VYYYYMMDD}','${VHHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}')
-
 EOF
+
+	   # For the forecast, run the python script OUTSIDE OF MET, while MET crashes with python pygrib routines
+	   #  Within python_stuff.getDataArray, the script will output a temporary GRIB file (temp_fcst.grb2)
+	   #   that can be read into MET directly, but which contains potentially derived fields.
+	   if [ $i == 1 ]; then 
+	      rm -f ./temp_fcst.grb2
+	      python $scriptName # Will create temp_fcst.grb2
+	      FCST_FILE=./temp_fcst.grb2
+	   fi;
 
         done # loop over i=1,2, once for forecast, another for obs
         

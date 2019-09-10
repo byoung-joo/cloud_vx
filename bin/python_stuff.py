@@ -10,18 +10,40 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.basemap import Basemap
 import fnmatch
+import pygrib
 #####
 
 ###########################################
 
 missing_values = -9999.0  # for MET
 
-obsDatasets =  {
+griddedDatasets =  {
    'MERRA2'   : { 'gridType':'LatLon',   'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, },
    'SATCORPS' : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, },
-   'ERA5'     : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280],   'flipY':False, },
+   'ERA5'     : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280], 'flipY':False, },
+   'GFS'      : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, },
+   'GALWEM'   : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, },
+}
    #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
    #'ERA5'     : { 'gridType':'Gaussian', 'nx':1280, 'ny':640, 'lon_zero':0, 'latVar':'latitude', 'lonVar':'longitude', 'flipY':False, },
+
+#GALWEM
+lowCloudFrac_GALWEM  =  { 'parameterCategory':6, 'parameterNumber':3, 'typeOfFirstFixedSurface':10, 'shortName':'lcc' }
+midCloudFrac_GALWEM  =  { 'parameterCategory':6, 'parameterNumber':4, 'typeOfFirstFixedSurface':10, 'shortName':'mcc' }
+highCloudFrac_GALWEM =  { 'parameterCategory':6, 'parameterNumber':5, 'typeOfFirstFixedSurface':10, 'shortName':'hcc' }
+totalCloudFrac_GALWEM = { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':10, 'shortName':'tcc' }
+
+#GFS
+lowCloudFrac_GFS  =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':214, 'shortName':'tcc' }
+midCloudFrac_GFS  =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':224, 'shortName':'tcc' }
+highCloudFrac_GFS =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':234, 'shortName':'tcc' }
+
+verifVariablesModel = {
+    'binaryCloud'    :  {'GFS':[''], 'GALWEM':[totalCloudFrac_GALWEM]},
+    'totalCloudFrac' :  {'GFS':[''], 'GALWEM':[totalCloudFrac_GALWEM]},
+    'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM':[lowCloudFrac_GALWEM]  },
+    'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM':[midCloudFrac_GALWEM]  },
+    'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM':[highCloudFrac_GALWEM]  },
 }
 
 verifVariables = {
@@ -36,6 +58,14 @@ verifVariables = {
    'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
 }
+#f = '/glade/u/home/schwartz/cloud_verification/GFS_grib_0.25deg/2018112412/gfs.0p25.2018112412.f006.grib2'
+#grbs = pygrib.open(f)
+#idx = pygrib.index(f,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
+#model = 'GFS'
+#variable = 'totCloudCover'
+#x = verifVariablesModel[variable][model] # returns a list, whose ith element is a dictionary
+# e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
+#idx(parameterCategory=x[0]['parameterCategory'],parameterNumber=x[0]['parameterNumber'],typeOfFirstFixedSurface=x[0]['typeOfFirstFixedSurface'])
 
 # to read in an environmental variable
 #x = os.getenv('a') # probably type string no matter what
@@ -61,6 +91,8 @@ def getTotalCloudFrac(source,data):
       print x.min(), x.max()
    elif source == 'ERA5':
       x = data[0][0,0,:,:] * 100.0
+   else:
+      x = data[0]
 
    # This next line is WRONG.
    # Missing should be set to missing
@@ -85,6 +117,9 @@ def getLayerCloudFrac(source,data,layer):
       x = data[0][0,:,:] * 100.0
    elif source == 'ERA5':
       x = data[0][0,0,:,:] * 100.0
+   else:
+      x = data[0]
+
    return x
 
 def getCloudTopTemp(source,data):
@@ -136,35 +171,40 @@ def getCloudCeiling(source,data):
 
 ###########
 
-def getDataArray(fcstFile,obsFile,obsSource,variable,validTime):
-   ## Ideally, pass 5 pieces of information to python:
-   # 1) Forecast file name
-   # 2) Observations file name
-   # 3) Obsevation source (e.g., MERRA, SATCORP, etc.)
-   # 4) Variable to verify
-   # With these 5 pieces of information, everything else
-   # is probably derivable within this script
+def getDataArray(inputFile,source,variable,validTime,dataSource):
+   # 1) File name--either observations or forecast
+   # 2) Obsevation source (e.g., MERRA, SATCORP, etc.)
+   # 3) Variable to verify
+   # 4) validTime
+   # 5) Data source: If 1, process forecast file. If 2 process obs file.
 
 #   # specifying names here temporarily. file names should be passed in to python from shell script
-#   if obsSource == 'merra':
+#   if source == 'merra':
 #      nc_file = '/gpfs/fs1/scratch/schwartz/MERRA/MERRA2_400.tavg1_2d_rad_Nx.20181101.nc4'
-#   elif obsSource == 'satcorp':
+#   elif source == 'satcorp':
 #      nc_file = '/glade/scratch/bjung/met/test_satcorps/GEO-MRGD.2018334.0000.GRID.NC'
-#   elif obsSource == 'era5':
+#   elif source == 'era5':
 #      nc_file = '/glade/scratch/bjung/met/test_era5/e5.oper.fc.sfc.instan.128_164_tcc.regn320sc.2018111606_2018120112.nc'
 
-   obsSource = obsSource.upper().strip()  # Force uppercase and get rid of blank spaces, for safety
+   source = source.upper().strip()  # Force uppercase and get rid of blank spaces, for safety
 
-   nc_file=obsFile
-   print 'Trying to read ',nc_file
+   if dataSource == 1:  # dataSource == 1 means forecast
+      varsToRead = verifVariablesModel[variable][source] # returns a list whose ith element is a dictionary
+     #grbs = pygrib.open(inputFile)
+      idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
+     #grbs.close()
 
-   # Open the file
-   nc_fid = Dataset(nc_file, "r", format="NETCDF4") #Dataset is the class behavior to open the file
-   #nc_fid.set_auto_scale(True)
+   if dataSource == 2:  # dataSource == 2 means obs
+      varsToRead = verifVariables[variable][source] # returns a list
+      # Open the file
+      nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
+      #nc_fid.set_auto_scale(True)
+
+   print 'Trying to read ',inputFile
 
    # Get lat/lon information--currently not used
-  #latVar = obsDatasets[obsSource]['latVar']
-  #lonVar = obsDatasets[obsSource]['lonVar']
+  #latVar = griddedDatasets[source]['latVar']
+  #lonVar = griddedDatasets[source]['lonVar']
   #lats = np.array(nc_fid.variables[latVar][:])   # extract/copy the data
   #lons = np.array(nc_fid.variables[lonVar][:] )
 
@@ -181,11 +221,23 @@ def getDataArray(fcstFile,obsFile,obsSource,variable,validTime):
 
    # get data
    data = []
-   varsToRead = verifVariables[variable][obsSource] # returns a list
    for v in varsToRead:
-      print 'Reading ', v
-      read_var = nc_fid.variables[v]         # extract/copy the data
-      read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+      if dataSource == 1:  # dataSource == 1 means forecast
+         # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
+	 x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+	 if x.shortName != v['shortName']: print 'Name mismatch!'
+	 print 'here 1'
+	#read_var, yy = x.latlons() #x.data()[0] # x.values # this somehow works but gives wrong data
+	 read_var = x.values # x.data()[0] # x.values
+	 print 'here 2'
+	 read_missing = x.missingValue
+	 print 'Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface
+
+      if dataSource == 2:  # dataSource == 2 means obs
+	 read_var = nc_fid.variables[v]         # extract/copy the data
+	 read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+	 print 'Reading ', v
+
       this_var = np.array( read_var )        # to numpy array
      #print read_missing, np.nan
       this_var = np.where( this_var==read_missing, np.nan, this_var )
@@ -196,13 +248,13 @@ def getDataArray(fcstFile,obsFile,obsSource,variable,validTime):
 
    # Call a function to get the variable of interest.
    # Add a new function for each variable
-   if variable == 'binaryCloud':     raw_data = getBinaryCloud(obsSource,data)
-   if variable == 'totalCloudFrac':  raw_data = getTotalCloudFrac(obsSource,data)
-   if variable == 'lowCloudFrac':    raw_data = getLayerCloudFrac(obsSource,data,'low')
-   if variable == 'midCloudFrac':    raw_data = getLayerCloudFrac(obsSource,data,'mid')
-   if variable == 'highCloudFrac':   raw_data = getLayerCloudFrac(obsSource,data,'high')
-   if variable == 'cloudTopTemp':    raw_data = getCloudTopTemp(obsSource,data)
-   if variable == 'cloudTopPres':    raw_data = getCloudTopPres(obsSource,data)
+   if variable == 'binaryCloud':     raw_data = getBinaryCloud(source,data)
+   if variable == 'totalCloudFrac':  raw_data = getTotalCloudFrac(source,data)
+   if variable == 'lowCloudFrac':    raw_data = getLayerCloudFrac(source,data,'low')
+   if variable == 'midCloudFrac':    raw_data = getLayerCloudFrac(source,data,'mid')
+   if variable == 'highCloudFrac':   raw_data = getLayerCloudFrac(source,data,'high')
+   if variable == 'cloudTopTemp':    raw_data = getCloudTopTemp(source,data)
+   if variable == 'cloudTopPres':    raw_data = getCloudTopPres(source,data)
    if variable == 'cloudTopHeight':  raw_data = getCloudTopHeight(obsSource,data)
    if variable == 'cloudBaseHeight': raw_data = getCloudBaseHeight(obsSource,data)
    if variable == 'cloudCeiling':    raw_data = getCloudCeiling(obsSource,data)
@@ -211,8 +263,8 @@ def getDataArray(fcstFile,obsFile,obsSource,variable,validTime):
 
    # Array met_data is passed to MET
    # Graphics should plot $met_data to make sure things look correct
-   if obsDatasets[obsSource]['flipY']: 
-      print 'flipping ',obsSource,' data about y-axis'
+   if griddedDatasets[source]['flipY']: 
+      print 'flipping ',source,' data about y-axis'
       met_data=np.flip(raw_data,axis=0).astype(float)
    else:
       met_data=raw_data.astype(float)
@@ -225,22 +277,40 @@ def getDataArray(fcstFile,obsFile,obsSource,variable,validTime):
 #   map.drawparallels(np.arange(-90,90,30),labels=[1,1,0,1])
 #   map.drawmeridians(np.arange(0,360,60),labels=[1,1,0,1])
 #   plt.contourf(lons,lats,plt_data,20,origin='upper',cmap=cm.Greens) #cm.gist_rainbow)
-#   title=obsSource+"_"+variable+"_"+str(validTime)
+#   title=source+"_"+variable+"_"+str(validTime)
 #   plt.title(title)
 #   plt.colorbar(orientation='horizontal')
 #   plt.savefig(title+".png")
 
+   # If a forecast file, output a GRIB file with 
+   # 1 record containing the met_data
+   # This is a hack, because right now, MET python embedding doesn't work with pygrib,
+   #  so output the data to a temporary file, and then have MET read the temporary grib file.
+   outputFcstFile = True
+   if dataSource == 1: 
+      if outputFcstFile:
+	 grbtmp = x
+	 grbtmp['values']=met_data
+	 grbout = open('temp_fcst.grb2','ab')
+	 grbout.write(grbtmp.tostring())
+	 grbout.close() # Close the outfile GRIB file
+	 print 'Successfully output temp_fcst.grb2'
+
+   # Close files
+   if dataSource == 1: idx.close()    # Close the input GRIB file
+   if dataSource == 2: nc_fid.close() # Close the netCDF file
+
    return met_data
 
 ###########
-def getGridInfo(obsSource,gridType):
+def getGridInfo(source,gridType):
 
    if gridType == 'LatLon':
-      latDef = obsDatasets[obsSource]['latDef']
-      lonDef = obsDatasets[obsSource]['lonDef']
+      latDef = griddedDatasets[source]['latDef']
+      lonDef = griddedDatasets[source]['lonDef']
       gridInfo = {
          'type':      gridType,
-         'name':      obsSource,
+         'name':      source,
          'lat_ll':    latDef[0], #-90.000,
          'lon_ll':    lonDef[0], #-180.000,
          'delta_lat': latDef[1], #0.5000,
@@ -251,15 +321,15 @@ def getGridInfo(obsSource,gridType):
    elif gridType == 'Gaussian':
       gridInfo = {
         'type':     gridType,
-        'name':     obsSource,
-        'nx':       obsDatasets[obsSource]['nx'],
-        'ny':       obsDatasets[obsSource]['ny'],
-        'lon_zero': obsDatasets[obsSource]['lon_zero'],
+        'name':     source,
+        'nx':       griddedDatasets[source]['nx'],
+        'ny':       griddedDatasets[source]['ny'],
+        'lon_zero': griddedDatasets[source]['lon_zero'],
       }
  
    return gridInfo
 
-def getAttrArray(obsSource,variable,initialTimeYMD,initialTimeHMS,validTimeYMD,validTimeHMS,forecastHMS):
+def getAttrArray(source,variable,initialTimeYMD,initialTimeHMS,validTimeYMD,validTimeHMS,forecastHMS):
 
    attrs = {
 
@@ -268,16 +338,16 @@ def getAttrArray(obsSource,variable,initialTimeYMD,initialTimeHMS,validTimeYMD,v
       'lead':  forecastHMS,
       'accum': '000000',
 
-      'name':      obsSource,  #'MERRA2_Cloud_Percentage'
+      'name':      source,  #'MERRA2_Cloud_Percentage'
       'long_name': variable,  #'Cloud Percentage Levels',
       'level':     'ALL',
       'units':     verifVariables[variable]['units'],
 
-      'grid': getGridInfo(obsSource,obsDatasets[obsSource]['gridType'])
+      'grid': getGridInfo(source,griddedDatasets[source]['gridType'])
    }
 
    #print attrs
-   #print obsDatasets[obsSource]
+   #print griddedDatasets[source]
 
    return attrs
 
