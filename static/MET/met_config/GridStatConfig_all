@@ -133,7 +133,7 @@ mask = {
 //
 // Confidence interval settings
 //
-ci_alpha  = [ 0.10, 0.05 ];
+ci_alpha  = [ 0.05 ];
 
 //boot = {
 //   interval = PCTILE;
@@ -168,7 +168,7 @@ ci_alpha  = [ 0.10, 0.05 ];
 //
 nbrhd = {
    field      = BOTH;
-   width      = [ 3, 5 ]; // make this more flexible
+   width      = [ 3, 5, 7, 9 ]; // make this more flexible
    cov_thresh = [ >0 ];
    vld_thresh = 1.0;
    shape      = CIRCLE;

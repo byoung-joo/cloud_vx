@@ -124,6 +124,7 @@ export VX_VAR
 
 # Compute the verification date
 YYYYMMDD=`${ECHO} ${START_TIME} | ${CUT} -c1-8`
+MMDD=`${ECHO} ${START_TIME} | ${CUT} -c5-8`
 HHMMSS=`${DATAROOT}/exec/da_advance_time.exe ${START_TIME} 0 -F hhnnss`  # CSS
 HH=`${ECHO} ${START_TIME} | ${CUT} -c9-10`
 VDATE=`${DATAROOT}/exec/da_advance_time.exe ${START_TIME} +${FCST_TIME}`
@@ -149,7 +150,7 @@ OBS_FILE=${metnc}/${VX_OBS}_${VDATE}_${VX_VAR}.nc
 if [ ! -e ${OBS_FILE} ]; then
 
   # List observation file to be run through ascii2nc
-  ASCII_FILE=`${LS} ${RAW_OBS}/${VX_OBS}/ascii/ascii_${VDATE}_${VX_VAR}.txt | head -1`
+  ASCII_FILE=`${LS} ${RAW_OBS}/${VX_OBS}/ascii_${VDATE}_${VX_VAR}.txt | head -1`
   if [ -z "${ASCII_FILE}" ]; then
     echo "ERROR: Could not find observation file: ${ASCII_FILE}"
     exit 1
@@ -203,14 +204,29 @@ for DOMAIN in ${DOMAIN_LIST}; do
    fi
 
    # Get the forecast to verify
-   if [ ${FCST_TIME} == "09" ]; then	
-       FCST_HRS=$(printf "%03d" ${FCST_TIME##+(0)})  #for GFS name
-       FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-       FCST_TIME=$(printf "%01d" ${FCST_TIME##+(0)})
+   if [ ${FCST_TIME} == "09" ]; then
+       if [ ${MODEL} == "GFS" ]; then
+	   FCST_HRS=$(printf "%03d" ${FCST_TIME##+(0)})  #for GFS name
+	   FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
+	   FCST_TIME=$(printf "%01d" ${FCST_TIME##+(0)})
+       elif [ ${MODEL} == "GALWEM" ]; then
+	   FCST_HRS=$(printf "%03d" ${FCST_TIME})
+	   FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
+       else
+           ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
+           exit 1
+       fi
    else
-       
-       FCST_HRS=$(printf "%03d" ${FCST_TIME})  #for GFS name
-       FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
+       if [ ${MODEL} == "GFS" ]; then
+           FCST_HRS=$(printf "%03d" ${FCST_TIME})
+	   FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
+       elif [ ${MODEL} == "GALWEM" ]; then
+           FCST_HRS=$(printf "%03d" ${FCST_TIME})
+	   FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
+       else
+           ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
+           exit 1
+       fi
    fi
    
    if [ ! -e ${FCST_FILE} ]; then
