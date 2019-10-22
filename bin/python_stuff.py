@@ -330,7 +330,7 @@ def getGridInfo(source,gridType):
  
    return gridInfo
 
-def getAttrArray(source,variable,initTime,validTime,lead):
+def getAttrArray(source,variable,initTime,validTime):
 
    init = dt.datetime.strptime(initTime,"%Y%m%d%H")
    valid = dt.datetime.strptime(validTime,"%Y%m%d%H")
