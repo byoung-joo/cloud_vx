@@ -287,7 +287,6 @@ for DOMAIN in ${DOMAIN_LIST}; do
            cat > $scriptName << EOF
 import os
 import numpy as np
-import datetime as dt
 import python_stuff  # this is where all the work is done
 
 #fcstFile = '$FCST_FILE'
@@ -305,10 +304,7 @@ met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${VDATE},${i})
 # TODO: This is for "obs". If we ingest forecast later, we need to improve this.
 #attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
 #attrs = dict.getAttrArray(obsSource,variable,'${VYYYYMMDD}','${VHHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}')
-init = dt.datetime.strptime("${DATE}","%Y%m%d%H")
-valid = dt.datetime.strptime("${VDATE}","%Y%m%d%H")
-lead, rem = divmod((valid-init).total_seconds(), 3600)
-attrs = python_stuff.getAttrArray(dataSource,variable,init,valid,lead)
+attrs = python_stuff.getAttrArray(dataSource,variable,'${DATE}','${VDATE}')
 EOF
 
 	   # For the forecast, run the python script OUTSIDE OF MET, while MET crashes with python pygrib routines
