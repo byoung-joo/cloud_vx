@@ -37,7 +37,7 @@ DATE=/bin/date
 source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
 module purge
 module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
-module load met/8.0
+module load met/8.1
 ncar_pylib
 
 # Vars used for manual testing of the script

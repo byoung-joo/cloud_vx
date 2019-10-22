@@ -158,8 +158,9 @@ for DOMAIN in ${DOMAIN_LIST}; do
     export MASKS
 
     # Specify the MET Grid-Stat and MODE configuration files to be used
-   #GS_CONFIG_LIST="${MET_CONFIG}/GridStatConfig_all ${MET_CONFIG}/MODEConfig_all"  # CSS, I feel like this should be defined elsewhere...
-    GS_CONFIG_LIST="${MET_CONFIG}/GridStatConfig_all"  # CSS, I feel like this should be defined elsewhere...
+    #GS_CONFIG_LIST="${MET_CONFIG}/GridStatConfig_all ${MET_CONFIG}/MODEConfig_all"  # CSS, I feel like this should be defined elsewhere...
+    #GS_CONFIG_LIST="${MET_CONFIG}/GridStatConfig_all"  # CSS, I feel like this should be defined elsewhere...
+    GS_CONFIG_LIST="${MET_CONFIG}/GridStatConfig_all ${MET_CONFIG}/GridStatConfig_all_nbr ${MET_CONFIG}/GridStatConfig_all_prob"  # CSS, I feel like this should be defined elsewhere...
 
     # Get the forecast to verify
     if [ ${FCST_TIME} == "09" ]; then # Need some weird logic for FCST_TIME = 09
@@ -167,21 +168,6 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	FCST_TIME=$(printf "%01d" ${FCST_TIME##+(0)}) #1-digit...this line probably not needed
     else
         FCST_HRS=$(printf "%03d" ${FCST_TIME})  #3-digit hour for GFS name
-    fi
-
-    if [ ${MODEL} == "GFS" ]; then
-       FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-    elif [ ${MODEL} == "GALWEM" ]; then
-       FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
-    else
-        ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
-        exit 1
-    fi
-
-    # Make sure FCST_FILE exists
-    if [ ! -e ${FCST_FILE} ]; then
-        ${ECHO} "ERROR: Could not find forecast file: ${FCST_FILE}"
-        exit 1
     fi
 
     # TODO: add more FCST variables
@@ -237,6 +223,21 @@ for DOMAIN in ${DOMAIN_LIST}; do
             ${ECHO} "ERROR: ${CONFIG_FILE} does not exist!"
             exit 1
         fi
+
+	if [ ${MODEL} == "GFS" ]; then
+	    FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
+	elif [ ${MODEL} == "GALWEM" ]; then
+	    FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
+	else
+            ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
+            exit 1
+    fi
+
+	# Make sure FCST_FILE exists
+	if [ ! -e ${FCST_FILE} ]; then
+            ${ECHO} "ERROR: Could not find forecast file: ${FCST_FILE}"
+            exit 1
+	fi
 
         # Get the processed observation file 
         if [ ${VX_OBS} == "SATCORPS" ]; then
@@ -338,7 +339,7 @@ EOF
 	   ${MET_EXE_ROOT}/plot_data_plane PYTHON_NUMPY \
 	     ${workdir}/${VX_VAR}/${VX_OBS}/${VX_OBS}_${VX_VAR}_${START_TIME}_f${FCST_HRS}.ps \
 	     -title ${VX_OBS}_${VX_VAR}_${START_TIME}_f${FCST_HRS} \
-	     -color_table /glade/p/ral/jntp/MET/MET_releases/8.0/met-8.0/data/colortables/NCL_colortables/wh-bl-gr-ye-re.ctable \
+	     -color_table /glade/p/ral/jntp/MET/MET_releases/8.1/met-8.1.1/data/colortables/NCL_colortables/wh-bl-gr-ye-re.ctable \
 	     'name="python_script_obs.py";'
         fi
 
