@@ -1,0 +1,252 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// Grid-Stat configuration file.
+//
+// For additional information, see the MET_BASE/config/README file.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Output model name to be written
+//
+model = "${MODEL}";
+
+//
+// Output description to be written
+// May be set separately in each "obs.field" entry
+//
+desc = "${VX_VAR}";
+
+//
+// Output observation type to be written
+//
+obtype = "${VX_OBS}";
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Verification grid
+//
+regrid = {
+   to_grid    = ${GRID_VX};
+   method     = ${interp_method}; //NEAREST or BILIN; 
+   width      = ${regrid_width};        // 1 for nearest, 2 for bilin;
+   vld_thresh = 0.5;
+   shape      = SQUARE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// May be set separately in each "field" entry
+//
+censor_thresh = [ <0 ];
+censor_val    = [ -9999 ];
+cnt_thresh    = [ NA ];
+cnt_logic     = UNION;
+wind_thresh   = [ NA ];
+wind_logic    = UNION;
+eclv_points   = 0.05;
+
+//
+// Forecast and observation fields to be verified
+//
+fcst = {
+
+   field = [
+      {
+          // Use this if reading directly from GRIB2 file
+//        name       = "${metConfName}";
+//        GRIB_lvl_typ = ${metConfGribLvlTyp};
+//        GRIB_lvl_val1 = ${metConfGribLvlVal1};
+
+//        level      = [ "R320" ];
+//        cat_thresh = [ >=100, >=50 ];
+
+          // Use this if doing python embedding
+//        name       = "python_script_fcst.py";
+
+          // Use this if reading from temporary GRIB2 file
+	  // created by running python code
+          //name       = "APCP"
+	  name       = "${metConfName}";
+          level      = [ "R01" ];
+
+        //cat_thresh = ${thresholds};
+	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0, >SFP20, >SFP30, >SFP40, >SFP50, >SFP60, >SFP70, >SFP80, ==FBIAS1, ==FBIAS1, ==FBIAS1, ==FBIAS1, ==FBIAS1 ];
+      }
+   ];
+// INFO: https://dtcenter.org/met/users/docs/users_guide/MET_Users_Guide_v8.0.pdf#page=59
+//1. Directly from GRIB record
+//      level      = [ "R320" ];
+// ./wgrib2 gfs.0p25.2018112912.f012.grib2 | grep -i tcdc
+// 317:153945499:d=2018112912:TCDC:low cloud layer:6-12 hour ave fcst:
+// 318:154428657:d=2018112912:TCDC:middle cloud layer:6-12 hour ave fcst:
+// 319:154713923:d=2018112912:TCDC:high cloud layer:6-12 hour ave fcst:
+// 320:155117315:d=2018112912:TCDC:entire atmosphere:6-12 hour ave fcst:
+// 332:163649799:d=2018112912:TCDC:convective cloud layer:12 hour fcst:
+// 333:163961960:d=2018112912:TCDC:boundary layer cloud layer:6-12 hour ave fcst:
+//2. Set "level type" & "value"
+//        GRIB_lvl_typ = 10;  // INFO: https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-5.shtml
+//        GRIB_lvl_val1 = 0;
+// ./wgrib2 gfs.0p25.2018112912.f012.grib2 -V -v2 | grep -i tcdc
+// 317:153945499:00Z30nov2018:lvl1=(214,0) lvl2=(255,missing):low cloud layer:6-12 hour ave fcst:TCDC Total Cloud Cover [%]:
+// 318:154428657:00Z30nov2018:lvl1=(224,0) lvl2=(255,missing):middle cloud layer:6-12 hour ave fcst:TCDC Total Cloud Cover [%]:
+// 319:154713923:00Z30nov2018:lvl1=(234,0) lvl2=(255,missing):high cloud layer:6-12 hour ave fcst:TCDC Total Cloud Cover [%]:
+// 320:155117315:00Z30nov2018:lvl1=(10,0) lvl2=(255,missing):entire atmosphere:6-12 hour ave fcst:TCDC Total Cloud Cover [%]:
+// 332:163649799:00Z30nov2018:lvl1=(244,0) lvl2=(255,missing):convective cloud layer:12 hour fcst:TCDC Total Cloud Cover [%]:
+// 333:163961960:00Z30nov2018:lvl1=(211,0) lvl2=(255,missing):boundary layer cloud layer:6-12 hour ave fcst:TCDC Total Cloud Cover [%]:
+
+}
+obs = {
+
+   field = [
+      {
+        name       = "python_script_obs.py";
+//      cat_thresh = [ >=100, >=50 ];
+        //cat_thresh = ${thresholds};
+	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0, >SOP20, >SOP30, >SOP40, >SOP50, >SOP60, >SOP70, >SOP80, >=10.0, >=30.0, >=50.0, >=70.0, >=90.0 ];
+      }
+   ];
+}
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Climatology data
+//
+//climo_mean = {
+//
+//   file_name = [];
+//   field     = [];
+//
+//   regrid = {
+//      method     = NEAREST;
+//      width      = 1;
+//      vld_thresh = 0.5;
+//      shape      = SQUARE;
+//   }
+//
+//   time_interp_method = DW_MEAN;
+//   match_month        = TRUE;
+//   match_day          = FALSE;
+//   time_step          = 21600;
+//}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Verification masking regions
+//
+mask = {
+    grid = ["FULL"]; // [ "DTC165", "DTC166" ];
+    poly = ["${MASKS}/GPP_17km_60S_60N_mask.nc"]; // [ "${TEST_OUT_DIR}/gen_vx_mask/CONUS_poly.nc", "MET_BASE/poly/LMV.poly" ];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Confidence interval settings
+//
+ci_alpha  = [ 0.05 ];
+
+//boot = {
+//   interval = PCTILE;
+//   rep_prop = 1.0;
+//   n_rep    = 0;
+//   rng      = "mt19937";
+//   seed     = "1";
+//}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Data smoothing methods
+//
+//interp = {
+//   field      = FCST;
+//   vld_thresh = 1.0;
+//   shape      = SQUARE;
+//
+//   type = [
+//      {
+//         method = NEAREST;
+//         width  = 1;
+//      }
+//   ];
+//}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Neighborhood methods
+//
+//nbrhd = {
+//   field      = BOTH;
+//   width      = [ 1 ]; // make this more flexible
+//   cov_thresh = [ >0 ];
+//   vld_thresh = 1.0;
+//   shape      = CIRCLE;
+//}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Fourier decomposition
+//
+//fourier = {
+//   wave_1d_beg = [];
+//   wave_1d_end = [];
+//}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// Statistical output types
+//
+output_flag = {
+   fho    = STAT;
+   ctc    = STAT;
+   cts    = STAT;
+   mctc   = NONE;
+   mcts   = NONE;
+   cnt    = STAT;
+   sl1l2  = STAT;
+   sal1l2 = NONE;
+   vl1l2  = NONE;
+   val1l2 = NONE;
+   vcnt   = NONE;
+   pct    = NONE;
+   pstd   = NONE;
+   pjc    = NONE;
+   prc    = NONE;
+   eclv   = NONE;
+   nbrctc = NONE;
+   nbrcts = NONE;
+   nbrcnt = NONE;
+   grad   = STAT;
+}
+
+//
+// NetCDF matched pairs output file
+//
+nc_pairs_flag   = {
+   latlon     = TRUE;
+   raw        = TRUE;
+   diff       = TRUE;
+   climo      = FALSE;
+   weight     = FALSE;
+   nbrhd      = FALSE;
+   fourier    = FALSE;
+   gradient   = TRUE;
+   apply_mask = TRUE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+grid_weight_flag = NONE;
+rank_corr_flag   = FALSE;
+tmp_dir          = "/tmp";
+output_prefix    = "${MODEL}_F${FCST_TIME}_${VX_VAR}";
+version          = "V8.1";
+
+////////////////////////////////////////////////////////////////////////////////
