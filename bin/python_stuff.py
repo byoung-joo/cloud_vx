@@ -2,6 +2,7 @@
 import os
 import sys
 import numpy as np
+import datetime as dt
 from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
 #### for Plotting
 import matplotlib.cm as cm
@@ -329,13 +330,17 @@ def getGridInfo(source,gridType):
  
    return gridInfo
 
-def getAttrArray(source,variable,initialTimeYMD,initialTimeHMS,validTimeYMD,validTimeHMS,forecastHMS):
+def getAttrArray(source,variable,initTime,validTime):
+
+   init = dt.datetime.strptime(initTime,"%Y%m%d%H")
+   valid = dt.datetime.strptime(validTime,"%Y%m%d%H")
+   lead, rem = divmod((valid-init).total_seconds(), 3600)
 
    attrs = {
 
-      'valid': validTimeYMD+'_'+validTimeHMS,
-      'init':  initialTimeYMD+'_'+initialTimeHMS,
-      'lead':  forecastHMS,
+      'valid': valid.strftime("%Y%m%d_%H%M%S"),
+      'init':  init.strftime("%Y%m%d_%H%M%S"),
+      'lead':  str(int(lead)),
       'accum': '000000',
 
       'name':      source,  #'MERRA2_Cloud_Percentage'

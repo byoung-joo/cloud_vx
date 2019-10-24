@@ -302,8 +302,9 @@ variable = '$VX_VAR'
 met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${VDATE},${i})
 
 # TODO: This is for "obs". If we ingest forecast later, we need to improve this.
-attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
+#attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
 #attrs = dict.getAttrArray(obsSource,variable,'${VYYYYMMDD}','${VHHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}')
+attrs = python_stuff.getAttrArray(dataSource,variable,'${START_TIME}','${VDATE}')
 EOF
 
 	   # For the forecast, run the python script OUTSIDE OF MET, while MET crashes with python pygrib routines
