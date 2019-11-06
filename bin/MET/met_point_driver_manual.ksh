@@ -42,20 +42,20 @@ module load met/8.1_python
 ncar_pylib
 
 # Vars used for manual testing of the script
-#export START_TIME=2017060506
-#export FCST_TIME_LIST="00" #"06 12" 
-#export VX_OBS_LIST="EPIC"
-#export VX_VAR_LIST="Cloud_Mask"
-#export DOMAIN_LIST="global"
-#export GRID_VX="NONE"
-#export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
-#export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config
-#export DATAROOT=/glade/scratch/`whoami`/cloud_vx
-#export FCST_DIR=/glade/scratch/schwartz/GALWEM
-#export RAW_OBS=/glade/scratch/schwartz/OBS
-#export MODEL="ERA5" #"GALWEM" # or even "ERA5" "SATCORPS" "MERRA2" , "GFS" #"hrconus"
+export START_TIME=2017060506
+export FCST_TIME_LIST="00" #"06 12" 
+export VX_OBS_LIST="EPIC"
+export VX_VAR_LIST="Cloud_Mask"
+export DOMAIN_LIST="global"
+export GRID_VX="NONE"
+export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
+export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config
+export DATAROOT=/glade/scratch/`whoami`/cloud_vx
+export FCST_DIR=/glade/scratch/schwartz/GALWEM
+export RAW_OBS=/glade/scratch/schwartz/OBS
+export MODEL="ERA5" #"GALWEM" # or even "ERA5" "SATCORPS" "MERRA2" , "GFS" #"hrconus"
 
-#export DO_MPR="BOTH" # BOTH, STAT, NONE for MPR line_type
+export DO_MPR="NONE" # BOTH, STAT, NONE for MPR line_type
 export DO_MPR=${DO_MPR:-"NONE"}
 
 # Print run parameters/masks

@@ -15,54 +15,43 @@ model = "${MODEL}";
 // Output description to be written
 // May be set separately in each "obs.field" entry
 //
-desc = "Cloud_Mask";
+desc = "NA";
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 // Verification grid
-// May be set separately in each "field" entry
 //
 regrid = {
-   to_grid    = ${GRID_VX};
+   to_grid    = NONE;
    method     = NEAREST;
    width      = 1;
    vld_thresh = 0.5;
-   shape      = SQUARE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-//
-// May be set separately in each "field" entry
-//
-censor_thresh  = [ <0 ];
-censor_val     = [ -9999 ];
-cat_thresh     = [ NA ];
-cnt_thresh     = [ NA ];
-cnt_logic      = UNION;
-wind_thresh    = [ NA ];
-wind_logic     = UNION;
-eclv_points    = 0.05;
+censor_thresh = [];
+censor_val    = [];
+cnt_thresh    = [ NA ];
+cnt_logic     = UNION;
+wind_thresh   = [ NA ];
+wind_logic    = UNION;
 
 //
 // Forecast and observation fields to be verified
 //
 fcst = {
+   cat_thresh = [ ==0.1 ];
    field = [
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ <=5.0 ]; },
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ >5.0&&<30.0 ]; },
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ >=30.0&&<95.0 ]; },
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ >=95.0 ]; }
+      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; prob = TRUE; }
    ];
 }
-
 obs = {
+   cat_thresh = [ >0 ];
+   message_type = [ "calipso" ];
    field = [
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==1.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==2.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==3.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==4.0000 ]; }
+      { name = "NLayers"; level = "Z0"; }
    ];
 }
 
@@ -72,27 +61,16 @@ obs = {
 // Point observation filtering options
 // May be set separately in each "obs.field" entry
 //
-message_type   = [ "ADPSFC" ];
 sid_exc        = [];
 obs_quality    = [];
-duplicate_flag = UNIQUE;
+duplicate_flag = NONE;
 obs_summary    = NONE;
-obs_perc_value = 50;
-
-//
-// Mapping of message type group name to comma-separated list of values.
-//
-// message_type_group_map = [
-//    { key = "SURFACE"; val = "ADPSFC,SFCSHP,MSONET";               },
-//    { key = "ANYAIR";  val = "AIRCAR,AIRCFT";                      },
-//    { key = "ANYSFC";  val = "ADPSFC,SFCSHP,ADPUPA,PROFLR,MSONET"; },
-//    { key = "ONLYSF";  val = "ADPSFC,SFCSHP";                      }
-// ];
+obs_percentile = 50;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
-// Climatology data
+// Climatology mean data
 //
 climo_mean = {
 
@@ -100,10 +78,9 @@ climo_mean = {
    field     = [];
 
    regrid = {
+      vld_thresh = 0.5;
       method     = NEAREST;
       width      = 1;
-      vld_thresh = 0.5;
-      shape      = SQUARE;
    }
 
    time_interp_method = DW_MEAN;
@@ -112,62 +89,51 @@ climo_mean = {
    time_step          = 21600;
 }
 
-climo_stdev = climo_mean;
-climo_stdev = {
-   file_name = [];
-}
-
-climo_cdf_bins = 1;
-
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 // Point observation time window
-// May be set separately in each "obs.field" entry
 //
 obs_window = {
-   beg = -5400;
-   end =  5400;
+   beg = -1799;
+   end =  1800;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 // Verification masking regions
-// May be set separately in each "obs.field" entry
 //
 mask = {
-   grid  = [ "FULL" ];
-   poly  = [];
+   grid  = ["FULL"];
+   poly  = [ ];
    sid   = [];
-   llpnt = [];
+   llpnt = [{name= "LATwithin60"; lat_thresh= >-60&&<60; lon_thresh= NA; },
+            {name= "POLAR"; lat_thresh= >=60 || <= -60; lon_thresh= NA; } ];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 // Confidence interval settings
-// May be set separately in each "obs.field" entry
 //
 ci_alpha  = [ 0.05 ];
 
 boot = {
    interval = PCTILE;
    rep_prop = 1.0;
-   n_rep    = 0;
+   n_rep    = 1000;
    rng      = "mt19937";
-   seed     = "";
+   seed     = "1";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 // Interpolation methods
-// May be set separately in each "obs.field" entry
 //
 interp = {
    vld_thresh = 1.0;
-   shape      = SQUARE;
 
    type = [
       {
@@ -181,21 +147,18 @@ interp = {
 
 //
 // HiRA verification method
-// May be set separately in each "obs.field" entry
 //
 hira = {
    flag       = FALSE;
    width      = [ 2, 3, 4, 5 ];
    vld_thresh = 1.0;
    cov_thresh = [ ==0.25 ];
-   shape      = SQUARE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 //
 // Statistical output types
-// May be set separately in each "obs.field" entry
 //
 output_flag = {
    fho    = NONE;
@@ -209,20 +172,20 @@ output_flag = {
    vl1l2  = NONE;
    val1l2 = NONE;
    vcnt   = NONE;
-   pct    = NONE;
+   pct    = BOTH;
    pstd   = NONE;
    pjc    = NONE;
    prc    = NONE;
-   ecnt   = NONE; // Only for HiRA.
+   ecnt   = NONE;
    eclv   = NONE;
-   mpr    = STAT;
+   mpr    = ${DO_MPR};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-rank_corr_flag = FALSE;
+rank_corr_flag = TRUE;
 tmp_dir        = "/tmp";
-output_prefix  = "${MODEL}_F${FCST_TIME}_TCDC_MPR";
+output_prefix  = "${MODEL}_F${FCST_TIME}_${VX_VAR}";
 version        = "V8.1";
 
 ////////////////////////////////////////////////////////////////////////////////

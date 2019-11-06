@@ -50,18 +50,19 @@ eclv_points    = 0.05;
 //
 fcst = {
    field = [
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ <=5.0 ]; },
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ >5.0&&<30.0 ]; },
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ >=30.0&&<95.0 ]; },
-      { name = "TCDC"; level = [ "R320" ]; cat_thresh = [ >=95.0 ]; }
+      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ <=0.0 ]; },
+      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ <=0.0 ]; },
+      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ >0.0 ]; },
+      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ >0.0 ]; }
+
    ];
 }
 
 obs = {
    field = [
       { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==1.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==2.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==3.0000 ]; },
+      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ <=2.0000 ]; },
+      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ >=3.0000 ]; },
       { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==4.0000 ]; }
    ];
 }
@@ -215,7 +216,7 @@ output_flag = {
    prc    = NONE;
    ecnt   = NONE; // Only for HiRA.
    eclv   = NONE;
-   mpr    = NONE;
+   mpr    = ${DO_MPR};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
