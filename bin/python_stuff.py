@@ -24,6 +24,7 @@ griddedDatasets =  {
    'ERA5'     : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280], 'flipY':False, },
    'GFS'      : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, },
    'GALWEM'   : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, },
+   'point'    : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[0.0,921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, },
 }
    #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
    #'ERA5'     : { 'gridType':'Gaussian', 'nx':1280, 'ny':640, 'lon_zero':0, 'latVar':'latitude', 'lonVar':'longitude', 'flipY':False, },
@@ -58,6 +59,7 @@ verifVariables = {
    'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.0, >= 273.0', 'interpMethod':'bilin'},
 }
 #f = '/glade/u/home/schwartz/cloud_verification/GFS_grib_0.25deg/2018112412/gfs.0p25.2018112412.f006.grib2'
 #grbs = pygrib.open(f)
@@ -302,6 +304,47 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    if dataSource == 2: nc_fid.close() # Close the netCDF file
 
    return met_data
+
+def point2point(source,inputFile,channelIndex,dataSource):
+
+   if dataSource == 1: v = 'tb_bak'   # Forecast variable
+   if dataSource == 2: v = 'tb_obs'   # Observation variable
+
+   # Open the file
+   nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
+   print 'Trying to read ',inputFile
+
+   # Read data
+   read_var = nc_fid.variables[v]         # extract/copy the data
+   read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+   this_var  = np.array( read_var )        # to numpy array
+   this_var = np.where( this_var==read_missing, np.nan, this_var )
+   print 'Reading ', v
+
+   numObs = this_var.shape[0] # number of points for one channel
+
+   # Assume all the points actually fit into a square grid. Get the side of the square (use ceil to round up)
+   l = np.ceil(np.sqrt(numObs)).astype('int') # Length of the side of the square
+
+   # Make an array that can be reshaped into the square 
+   raw_data1D = np.full(l*l,np.nan) # Initialize 1D array of length l**2 to np.nan
+   raw_data1D[0:numObs] = this_var[:,channelIndex] # Fill data to the extent possible. There will be some np.nan values at the end
+   raw_data = np.reshape(raw_data1D,(l,l)) # Reshape into "square grid"
+
+   raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
+
+   met_data=raw_data.astype(float) # Give MET this info
+
+   # Now need to tell MET the "grid" for the data
+   # Make a fake lat/lon grid going from 0.0 to 50.0 degrees, with the interval determined by number of points
+   griddedDatasets[source]['latDef'][0] = 0.0 # starting point
+   griddedDatasets[source]['latDef'][1] = np.diff(np.linspace(0,50,l)).round(6)[0] # interval (degrees)
+   griddedDatasets[source]['latDef'][2] = l # number of points
+   griddedDatasets[source]['lonDef'][0:3] = griddedDatasets[source]['latDef']
+
+   gridInfo = getGridInfo(source, griddedDatasets[source]['gridType']) # 'LatLon' gridType
+
+   return met_data, gridInfo
 
 ###########
 def getGridInfo(source,gridType):
