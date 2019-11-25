@@ -50,20 +50,15 @@ eclv_points    = 0.05;
 //
 fcst = {
    field = [
-      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ <=0.0 ]; },
-      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ <=0.0 ]; },
-      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ >0.0 ]; },
-      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ >0.0 ]; }
-
+      { name = "${FCST_FIELD_NAME}"; GRIB_lvl_typ = 10; GRIB_lvl_val1 = 0; cat_thresh = [ <=0.0, >0.0 ]; }
    ];
 }
 
 obs = {
+   censor_thresh  = [ >=2 && <=3 ];
+   censor_val     = [ -9999 ];
    field = [
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==1.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ <=2.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ >=3.0000 ]; },
-      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==4.0000 ]; }
+      { name = "CLD"; level = [ "P500" ]; cat_thresh = [ ==1.0000, ==4.000 ]; }
    ];
 }
 
@@ -141,7 +136,8 @@ mask = {
    grid  = [ "FULL" ];
    poly  = [];
    sid   = [];
-   llpnt = [];
+   llpnt = [{name= "LATwithin60"; lat_thresh= >-60&&<60; lon_thresh= NA; },
+            {name= "POLAR"; lat_thresh= >=60 || <= -60; lon_thresh= NA; } ];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
