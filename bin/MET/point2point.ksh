@@ -157,7 +157,8 @@ for DOMAIN in ${DOMAIN_LIST}; do
     fi
 
     #FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-    FCST_FILE="/glade/scratch/wuyl/test2/Lekima/da/obserr/plot/diag/diags_himawari-8-ahi_2019081100.nc"
+   #FCST_FILE="/glade/scratch/wuyl/test2/Lekima/da/obserr/plot/diag/diags_himawari-8-ahi_2019081100.nc"
+    FCST_FILE="/glade/scratch/wuyl/test2/pandac/mw/15km_mpas/6hfcst_thomp_DA_bc_noqc_thomp_ocean/2018041806/Data/obsout_3dvar_amsua_n19--hydro_0252.nc4"
 
     # Make sure FCST_FILE exists
     if [ ! -e ${FCST_FILE} ]; then
@@ -213,7 +214,7 @@ import python_stuff  # this is where all the work is done
 dataFile = '$dataFile'
 variable = '$VX_VAR'
 
-met_data, gridInfo = python_stuff.point2point('point',dataFile,0,${i})
+met_data, gridInfo = python_stuff.point2point('point',dataFile,${CHANNEL},${i})
 attrs = python_stuff.getAttrArray('point',variable,'${START_TIME}','${VDATE}')
 attrs['grid'] = gridInfo
 EOF

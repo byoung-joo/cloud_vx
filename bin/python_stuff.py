@@ -85,7 +85,8 @@ def getInterpMethod(variable):
 
 def getTotalCloudFrac(source,data):
    if source == 'SATCORPS':
-      x = data[0][0,:,:,0] * 1.0E-2  # scaling
+    # x = data[0][0,:,:,0] * 1.0E-2  # scaling
+      x = (data[0][0,:,:,1]  + data[0][0,:,:,2] + data[0][0,:,:,3])*1.0E-2  # scaling
    #  y = data[0]
    #  x = np.sum( y[:,:,:,1:4],axis=3)
    elif source == 'MERRA2':
@@ -305,10 +306,10 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 
    return met_data
 
-def point2point(source,inputFile,channelIndex,dataSource):
+def point2point(source,inputFile,channel,dataSource):
 
-   if dataSource == 1: v = 'tb_bak'   # Forecast variable
-   if dataSource == 2: v = 'tb_obs'   # Observation variable
+   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' #'tb_bak'   # Forecast variable
+   if dataSource == 2: v = 'brightness_temperature_'+str(channel)+'@ObsValue'  #'tb_obs'   # Observation variable
 
    # Open the file
    nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
@@ -316,9 +317,9 @@ def point2point(source,inputFile,channelIndex,dataSource):
 
    # Read data
    read_var = nc_fid.variables[v]         # extract/copy the data
-   read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+#  read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
    this_var  = np.array( read_var )        # to numpy array
-   this_var = np.where( this_var==read_missing, np.nan, this_var )
+#  this_var = np.where( this_var==read_missing, np.nan, this_var )
    print 'Reading ', v
 
    numObs = this_var.shape[0] # number of points for one channel
@@ -328,7 +329,7 @@ def point2point(source,inputFile,channelIndex,dataSource):
 
    # Make an array that can be reshaped into the square 
    raw_data1D = np.full(l*l,np.nan) # Initialize 1D array of length l**2 to np.nan
-   raw_data1D[0:numObs] = this_var[:,channelIndex] # Fill data to the extent possible. There will be some np.nan values at the end
+   raw_data1D[0:numObs] = this_var[:] # this_var[:,channel] # Fill data to the extent possible. There will be some np.nan values at the end
    raw_data = np.reshape(raw_data1D,(l,l)) # Reshape into "square grid"
 
    raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
