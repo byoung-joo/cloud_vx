@@ -172,6 +172,8 @@ def getCloudBaseHeight(source,data):
       x = data[0][0,:,:]     #TBD
    elif source == 'ERA5':
       x = data[0][0,0,:,:]
+   elif source == 'GALWEM':
+      x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
    else:
       x = data[0]
    return x
@@ -242,7 +244,11 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    for v in varsToRead:
       if dataSource == 1:  # dataSource == 1 means forecast
          # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
-	 x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+	 if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
+	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
+	 else
+	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+	 
 	 if x.shortName != v['shortName']: print 'Name mismatch!'
 	#read_var, yy = x.latlons() #x.data()[0] # x.values # this somehow works but gives wrong data
 	 read_var = x.values # x.data()[0] # x.values
