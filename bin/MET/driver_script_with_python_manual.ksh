@@ -51,7 +51,7 @@ ncar_pylib
 export START_TIME=2017060500 #2018110100
 export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
 export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
-export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight
+export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
 export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin

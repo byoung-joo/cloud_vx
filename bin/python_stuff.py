@@ -34,6 +34,8 @@ lowCloudFrac_GALWEM  =  { 'parameterCategory':6, 'parameterNumber':3, 'typeOfFir
 midCloudFrac_GALWEM  =  { 'parameterCategory':6, 'parameterNumber':4, 'typeOfFirstFixedSurface':10, 'shortName':'mcc' }
 highCloudFrac_GALWEM =  { 'parameterCategory':6, 'parameterNumber':5, 'typeOfFirstFixedSurface':10, 'shortName':'hcc' }
 totalCloudFrac_GALWEM = { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':10, 'shortName':'tcc' }
+cloudTopHeight_GALWEM =  { 'parameterCategory':6, 'parameterNumber':12, 'typeOfFirstFixedSurface':3, 'shortName':'cdct' }
+cloudBaseHeight_GALWEM =  { 'parameterCategory':6, 'parameterNumber':11, 'typeOfFirstFixedSurface':2, 'shortName':'cdcb' }
 
 #GFS
 lowCloudFrac_GFS  =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':214, 'shortName':'tcc' }
@@ -46,6 +48,8 @@ verifVariablesModel = {
     'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM':[lowCloudFrac_GALWEM]  },
     'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM':[midCloudFrac_GALWEM]  },
     'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM':[highCloudFrac_GALWEM]  },
+    'cloudTopHeight' :  {'GFS':['']               , 'GALWEM':[cloudTopHeight_GALWEM] },
+    'cloudBaseHeight' : {'GFS':['']               , 'GALWEM':[cloudBaseHeight_GALWEM] },
 }
 
 verifVariables = {
@@ -56,8 +60,8 @@ verifVariables = {
    'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':'>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0', 'interpMethod':'bilin' },
    'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'units':'K',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'units':'hPa', 'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
+   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.0, >= 273.0', 'interpMethod':'bilin'},
 }
@@ -133,6 +137,8 @@ def getCloudTopTemp(source,data):
       x = data[0][0,:,:] 
    elif source == 'ERA5':
       x = data[0][0,0,:,:]
+   else:
+      x = data[0]
    return x
 
 def getCloudTopPres(source,data):
@@ -142,6 +148,8 @@ def getCloudTopPres(source,data):
       x = data[0][0,:,:] * 1.0E-2  # scaling [Pa] -> [hPa]
    elif source == 'ERA5':
       x = data[0][0,0,:,:]
+   else:
+      x = data[0]
    return x
 
 def getCloudTopHeight(source,data):
@@ -151,6 +159,10 @@ def getCloudTopHeight(source,data):
       x = data[0][0,:,:]     #TBD
    elif source == 'ERA5':
       x = data[0][0,0,:,:]   #TBD
+   elif source == 'GALWEM':
+      x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
+   else:
+      x = data[0]
    return x
 
 def getCloudBaseHeight(source,data):
@@ -160,6 +172,8 @@ def getCloudBaseHeight(source,data):
       x = data[0][0,:,:]     #TBD
    elif source == 'ERA5':
       x = data[0][0,0,:,:]
+   else:
+      x = data[0]
    return x
 
 def getCloudCeiling(source,data):
@@ -230,12 +244,22 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
          # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
 	 x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
 	 if x.shortName != v['shortName']: print 'Name mismatch!'
-	 print 'here 1'
 	#read_var, yy = x.latlons() #x.data()[0] # x.values # this somehow works but gives wrong data
 	 read_var = x.values # x.data()[0] # x.values
-	 print 'here 2'
 	 read_missing = x.missingValue
 	 print 'Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface
+         
+	 # The missing value (read_missing) for GALWEM cloud base/height is 9999, which is idiotic because
+	 # those could be actual values. So we need to use the masked array part (below) to handle which
+	 # values are missing.  We also set read_missing to something unphysical to essentially disable it.
+	 # Finally, if we don't change the 'missingValue' property in the GRIB2 file we are eventually outputting,
+	 # the bitmap will get all messed up, because it will be based on 9999 instead of $missing_values
+	 if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
+	    read_missing = -9999.
+	    x['missingValue'] = read_missing
+	    #These are masked numpy arrays, with mask = True where there is a missing value (no cloud)
+	    #Use np.ma.filled to create an ndarray where mask = True values are set to np.nan
+	    read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
 
       if dataSource == 2:  # dataSource == 2 means obs
 	 read_var = nc_fid.variables[v]         # extract/copy the data
@@ -259,9 +283,9 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    if variable == 'highCloudFrac':   raw_data = getLayerCloudFrac(source,data,'high')
    if variable == 'cloudTopTemp':    raw_data = getCloudTopTemp(source,data)
    if variable == 'cloudTopPres':    raw_data = getCloudTopPres(source,data)
-   if variable == 'cloudTopHeight':  raw_data = getCloudTopHeight(obsSource,data)
-   if variable == 'cloudBaseHeight': raw_data = getCloudBaseHeight(obsSource,data)
-   if variable == 'cloudCeiling':    raw_data = getCloudCeiling(obsSource,data)
+   if variable == 'cloudTopHeight':  raw_data = getCloudTopHeight(source,data)
+   if variable == 'cloudBaseHeight': raw_data = getCloudBaseHeight(source,data)
+   if variable == 'cloudCeiling':    raw_data = getCloudCeiling(source,data)
 
    raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
 

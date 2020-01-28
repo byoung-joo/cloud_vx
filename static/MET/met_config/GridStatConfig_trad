@@ -68,7 +68,7 @@ fcst = {
 
           // Use this if reading from temporary GRIB2 file
 	  // created by running python code
-          //name       = "APCP"
+          //name       = "APCP";
 	  name       = "${metConfName}";
           level      = [ "R01" ];
 
