@@ -246,7 +246,7 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
          # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
 	 if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
 	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
-	 else
+	 else:
 	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
 	 
 	 if x.shortName != v['shortName']: print 'Name mismatch!'
