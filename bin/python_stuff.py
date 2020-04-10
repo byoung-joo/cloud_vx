@@ -18,6 +18,7 @@ import pygrib
 
 missing_values = -9999.0  # for MET
 
+#entry for 'point' is for point-to-point comparison and is all dummy data (except for gridType) that is overwritten by point2point
 griddedDatasets =  {
    'MERRA2'   : { 'gridType':'LatLon',   'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, },
    'SATCORPS' : { 'gridType':'LatLon',   'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, },
@@ -63,7 +64,7 @@ verifVariables = {
    'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
-   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.0, >= 273.0', 'interpMethod':'bilin'},
+   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0', 'interpMethod':'bilin'},
 }
 #f = '/glade/u/home/schwartz/cloud_verification/GFS_grib_0.25deg/2018112412/gfs.0p25.2018112412.f006.grib2'
 #grbs = pygrib.open(f)
@@ -336,30 +337,56 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 
    return met_data
 
-def point2point(source,inputFile,channel,dataSource):
+def point2point(source,inputDir,satellite,channel,dataSource):
 
-   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' #'tb_bak'   # Forecast variable
-   if dataSource == 2: v = 'brightness_temperature_'+str(channel)+'@ObsValue'  #'tb_obs'   # Observation variable
+   # Variable to pull
+   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' # Forecast variable
+   if dataSource == 2: v = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
 
-   # Open the file
-   nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
-   print 'Trying to read ',inputFile
+   # Variable for QC
+   qcVar = 'brightness_temperature_'+str(channel)+'@EffectiveQC0'
 
-   # Read data
-   read_var = nc_fid.variables[v]         # extract/copy the data
-#  read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
-   this_var  = np.array( read_var )        # to numpy array
-#  this_var = np.where( this_var==read_missing, np.nan, this_var )
-   print 'Reading ', v
+   # Get list of files.  There is one file per processor
+   files = os.listdir(inputDir)
+   inputFiles = fnmatch.filter(files,'obsout_omb_'+satellite+'*nc4') # returns relative path names
+   inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
+   if len(inputFiles) == 0: return -99999, -99999 # if no matching files, force a failure
 
+   # Open the files and put data in array
+   allData, allDataQC = [], []
+   for inputFile in inputFiles:
+      nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
+      print 'Trying to read ',v,' from ',inputFile
+
+      # Read data
+      read_var = nc_fid.variables[v]         # extract/copy the data
+   #  read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+      this_var  = np.array( read_var )        # to numpy array
+   #  this_var = np.where( this_var==read_missing, np.nan, this_var )
+      allData.append(this_var)
+
+      #Read QC data
+      qcData = np.array(nc_fid.variables[qcVar])
+      allDataQC.append(qcData)
+
+      # Sanity check
+      if qcData.shape != this_var.shape: return -99999, -99999 # shapes should match.
+
+   # Get the indices with acceptable QC
+   allQC = np.concatenate(allDataQC) # Put list of numpy arrays into a single long 1-D numpy array.  All QC data.
+   idx = np.where(allQC==0) # returns indices
+
+   # Now get all the forecast/observed brightness temperature data with acceptable QC
+   this_var = np.concatenate(allData)[idx] # Put list of numpy arrays into a single long 1-D numpy array. This is all the forecast/obs data with good QC
    numObs = this_var.shape[0] # number of points for one channel
+   print 'Number of obs :',numObs
 
    # Assume all the points actually fit into a square grid. Get the side of the square (use ceil to round up)
    l = np.ceil(np.sqrt(numObs)).astype('int') # Length of the side of the square
 
    # Make an array that can be reshaped into the square 
    raw_data1D = np.full(l*l,np.nan) # Initialize 1D array of length l**2 to np.nan
-   raw_data1D[0:numObs] = this_var[:] # this_var[:,channel] # Fill data to the extent possible. There will be some np.nan values at the end
+   raw_data1D[0:numObs] = this_var[:] # Fill data to the extent possible. There will be some np.nan values at the end
    raw_data = np.reshape(raw_data1D,(l,l)) # Reshape into "square grid"
 
    raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)

@@ -45,19 +45,19 @@ module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
 module load met/8.1_python
 ncar_pylib
 
-
 # Vars used for manual testing of the script
-export START_TIME=2017060500 #2018110100
-export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
-export VX_VAR_LIST="brightnessTemp" # Probably don't need
+export START_TIME=2018051100 #2018110100
+export FCST_TIME_LIST="24" # "12 09" # 6 9 12 24 36 48"
+export VX_VAR_LIST="brightnessTemp"
 export DOMAIN_LIST="global"  # Probably don't need
 export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config 
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx 
-export FCST_DIR=/glade/scratch/schwartz/GALWEM
+export FCST_DIR=/glade/scratch/schwartz/pandac_output/junmei
 export RAW_OBS=$FCST_DIR
-export SATELLITE="AMSUA-15"
-export CHANNEL_LIST="1 2 3"
+export SATELLITE="amsua_n19" # format is important and must match filename format
+export CHANNEL_LIST="5 6 7 8 9"
+export GS_CONFIG_LIST="${MET_CONFIG}/point2point_all" # MET Grid-Stat and MODE configuration files to be used
 
 # Print run parameters
 ${ECHO}
@@ -145,9 +145,6 @@ for DOMAIN in ${DOMAIN_LIST}; do
     MASKS=${MET_CONFIG}/masks
     export MASKS
 
-    # Specify the MET Grid-Stat and MODE configuration files to be used
-    GS_CONFIG_LIST="${MET_CONFIG}/point2point_all"  # CSS, I feel like this should be defined elsewhere...
-
     # Get the forecast to verify
     if [ ${FCST_TIME} == "09" ]; then # Need some weird logic for FCST_TIME = 09
 	FCST_HRS=$(printf "%03d" ${FCST_TIME##+(0)})  #3-digit hour for GFS name
@@ -158,11 +155,12 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
     #FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
    #FCST_FILE="/glade/scratch/wuyl/test2/Lekima/da/obserr/plot/diag/diags_himawari-8-ahi_2019081100.nc"
-    FCST_FILE="/glade/scratch/wuyl/test2/pandac/mw/15km_mpas/6hfcst_thomp_DA_bc_noqc_thomp_ocean/2018041806/Data/obsout_3dvar_amsua_n19--hydro_0252.nc4"
+   #FCST_FILE="/glade/scratch/wuyl/test2/pandac/mw/15km_mpas/6hfcst_thomp_DA_bc_noqc_thomp_ocean/2018041806/Data/obsout_3dvar_amsua_n19--hydro_0252.nc4"
+    THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/f${FCST_TIME}
 
-    # Make sure FCST_FILE exists
-    if [ ! -e ${FCST_FILE} ]; then
-        ${ECHO} "ERROR: Could not find forecast file: ${FCST_FILE}"
+    # Make sure the directory exists
+    if [ ! -d ${THIS_FCST_DIR} ]; then
+        ${ECHO} "ERROR: Could not find forecast dir: ${THIS_FCST_DIR}"
         exit 1
     fi
 
@@ -181,15 +179,16 @@ for DOMAIN in ${DOMAIN_LIST}; do
         fi
 
         # Get the processed observation file 
-       OBS_FILE=$FCST_FILE
+       OBS_DIR=$THIS_FCST_DIR
 
-	if [ ! -e ${OBS_FILE} ]; then
-	    ${ECHO} "ERROR: Could not find obs file: ${OBS_FILE}"
+	if [ ! -d ${OBS_DIR} ]; then
+	    ${ECHO} "ERROR: Could not find obs dir: ${OBS_DIR}"
 	    exit 1
 	fi
 	
-        ${MKDIR} -p ${workdir}/${SATELLITE}/channel${CHANNEL}
-	cd ${workdir}/${SATELLITE}/channel${CHANNEL}
+	thisDir=${workdir}/${SATELLITE}/channel${CHANNEL}
+        ${MKDIR} -p ${thisDir}
+	cd ${thisDir}
         ${CP} ${DATAROOT}/bin/python_stuff.py .
 
         # CSS get the verification thresholds.
@@ -200,10 +199,10 @@ for DOMAIN in ${DOMAIN_LIST}; do
         for i in 1 2; do
 	   if [ $i == 1 ]; then
 	      scriptName=./python_script_fcst.py
-	      dataFile=${FCST_FILE}
+	      dataDir=${THIS_FCST_DIR}
 	   elif [ $i == 2 ]; then
 	      scriptName=./python_script_obs.py
-	      dataFile=${OBS_FILE}
+	      dataDir=${OBS_DIR}
 	   fi
 	   ${ECHO} "Python script=$scriptName"
            cat > $scriptName << EOF
@@ -211,24 +210,24 @@ import os
 import numpy as np
 import python_stuff  # this is where all the work is done
 
-dataFile = '$dataFile'
+dataDir = '$dataDir'
 variable = '$VX_VAR'
 
-met_data, gridInfo = python_stuff.point2point('point',dataFile,${CHANNEL},${i})
+met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},${i})
 attrs = python_stuff.getAttrArray('point',variable,'${START_TIME}','${VDATE}')
 attrs['grid'] = gridInfo
 EOF
 
         done # loop over i=1,2, once for forecast, another for obs
         
-	${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat PYTHON_NUMPY PYTHON_NUMPY ${CONFIG_FILE} -outdir ${workdir}/${SATELLITE}/channel${CHANNEL} -v 2"
+	${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat PYTHON_NUMPY PYTHON_NUMPY ${CONFIG_FILE} -outdir ${thisDir} -v 2"
 
 	# Run grid_stat
 	${MET_EXE_ROOT}/grid_stat \
 	  PYTHON_NUMPY \
 	  PYTHON_NUMPY \
 	  ${CONFIG_FILE} \
-	  -outdir ${workdir}/${SATELLITE}/channel${CHANNEL} \
+	  -outdir ${thisDir}\
 	  -v 2
 
 	error=$?

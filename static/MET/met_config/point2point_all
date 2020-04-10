@@ -34,8 +34,8 @@ obtype = "${CHANNEL}";
 //
 // May be set separately in each "field" entry
 //
-censor_thresh = [ <0 ];
-censor_val    = [ -9999 ];
+censor_thresh = [ <100 ];  // brightness temp < 100 K is unphysical
+censor_val    = [ -9999 ]; 
 cnt_thresh    = [ NA ];
 cnt_logic     = UNION;
 wind_thresh   = [ NA ];
@@ -202,7 +202,7 @@ nc_pairs_flag   = {
    weight     = FALSE;
    nbrhd      = TRUE;
    fourier    = FALSE;
-   gradient   = TRUE;
+   gradient   = FALSE;
    apply_mask = TRUE;
 }
 
