@@ -362,7 +362,7 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
       if (len(idxMid) >0 ):  cfracm[i] = np.max( cfr[i,idxMid] )
       if (len(idxHigh) >0 ): cfrach[i] = np.max( cfr[i,idxHigh] )
 
-   # This is the fortran code put into python format
+   # This is the fortran code put into python format...double loop unnecessary and slow
    #for i in range(0,nlocs):
    #   for k in range(0,nlevs):
    #      if pmid(i,k) >= PTOP_LOW:
@@ -418,20 +418,23 @@ def point2point(source,inputDir,satellite,channel,dataSource):
 	 cldfraThresh = 20.0 # percent
          obsCldfra = np.array( nc_fid.variables['cloud_area_fraction@MetaData'] )*100.0 # Get into %...observed cloud fraction (AHI/ABI only)
 
-	 geoValsFile = inputFile.replace('obsout','geovals')
+	 geoValsFile = inputFile.replace('obsout','geoval')
 	 if not os.path.exists(geoValsFile):
 	    print(geoValsFile+' not there. exit')
 	    sys.exit()
 	 nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
 	 fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
-         pressure = np.array( nc_fid2.variabes['air_pressure']) # Pa
+         pressure = np.array( nc_fid2.variables['air_pressure']) # Pa
 	 low,mid,high = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high cloud fractions
-	 tmp = np.vstack( (cfracl,cfracm,cfrach)) # stack the rows into one 2d array
+	 tmp = np.vstack( (low,mid,high)) # stack the rows into one 2d array
 	 fcstTotCldFra = np.max(tmp,axis=0) # get maximum value
 
 	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
-	 if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these shouls all match
+	 if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these should all match
+	    print('Checking F/O correspondence for ABI/AHI')
 	    qcData = np.where( (fcstTotCldFra > cldfraThresh) & (obsCldfra > cldfraThresh), qcData, 90)
+	    print('number removed = ', (qcData==90).sum())
+	    print('number passed   = ', qcData.shape[0] - (qcData==90).sum())
 	 else:
 	    print('shape mismatch')
 	    return -99999, -99999
@@ -440,7 +443,6 @@ def point2point(source,inputDir,satellite,channel,dataSource):
 	#if not os.path.exists(ydiagFile):
 	#   print(ydiagFile+' not there. exit')
 	#   sys.exit()
-    
 
       # Append to arrays
       allData.append(this_var)
