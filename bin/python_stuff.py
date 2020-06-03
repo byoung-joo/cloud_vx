@@ -64,7 +64,7 @@ verifVariables = {
    'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
-   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0', 'interpMethod':'bilin'},
+   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
 }
 #f = '/glade/u/home/schwartz/cloud_verification/GFS_grib_0.25deg/2018112412/gfs.0p25.2018112412.f006.grib2'
 #grbs = pygrib.open(f)
@@ -97,7 +97,7 @@ def getTotalCloudFrac(source,data):
    elif source == 'MERRA2':
 #      x = ( data[0][0,:,:]+data[1][0,:,:]+data[2][0,:,:] ) *100.0 # the ith element of data is a numpy array
       x = data[0][0,:,:] * 100.0 # the ith element of data is a numpy array
-      print x.min(), x.max()
+      print(x.min(), x.max())
    elif source == 'ERA5':
       x = data[0][0,0,:,:] * 100.0
    else:
@@ -221,7 +221,7 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
       nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
       #nc_fid.set_auto_scale(True)
 
-   print 'Trying to read ',inputFile
+   print('Trying to read ',inputFile)
 
    # Get lat/lon information--currently not used
   #latVar = griddedDatasets[source]['latVar']
@@ -229,8 +229,8 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
   #lats = np.array(nc_fid.variables[latVar][:])   # extract/copy the data
   #lons = np.array(nc_fid.variables[lonVar][:] )
 
-   #print lats.max()
-   #print lons.max()
+   #print(lats.max())
+   #print(lons.max())
 
    # one way to deal with scale factors
    # probably using something like nc_fid.set_auto_scale(True) is better...
@@ -250,11 +250,11 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 	 else:
 	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
 	 
-	 if x.shortName != v['shortName']: print 'Name mismatch!'
+	 if x.shortName != v['shortName']: print('Name mismatch!')
 	#read_var, yy = x.latlons() #x.data()[0] # x.values # this somehow works but gives wrong data
 	 read_var = x.values # x.data()[0] # x.values
 	 read_missing = x.missingValue
-	 print 'Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface
+	 print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
          
 	 # The missing value (read_missing) for GALWEM cloud base/height is 9999, which is idiotic because
 	 # those could be actual values. So we need to use the masked array part (below) to handle which
@@ -271,15 +271,15 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
       if dataSource == 2:  # dataSource == 2 means obs
 	 read_var = nc_fid.variables[v]         # extract/copy the data
 	 read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
-	 print 'Reading ', v
+	 print('Reading ', v)
 
       this_var = np.array( read_var )        # to numpy array
-     #print read_missing, np.nan
+     #print(read_missing, np.nan)
       this_var = np.where( this_var==read_missing, np.nan, this_var )
-     #print this_var.shape
+     #print(this_var.shape)
       data.append(this_var) # ith element of the list is a NUMPY ARRAY for the ith variable
-     #print type(this_var)
-     #print type(data)
+     #print(type(this_var))
+     #print(type(data))
 
    # Call a function to get the variable of interest.
    # Add a new function for each variable
@@ -299,7 +299,7 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    # Array met_data is passed to MET
    # Graphics should plot $met_data to make sure things look correct
    if griddedDatasets[source]['flipY']: 
-      print 'flipping ',source,' data about y-axis'
+      print('flipping ',source,' data about y-axis')
       met_data=np.flip(raw_data,axis=0).astype(float)
    else:
       met_data=raw_data.astype(float)
@@ -329,7 +329,7 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 	 grbout = open('temp_fcst.grb2','ab')
 	 grbout.write(grbtmp.tostring())
 	 grbout.close() # Close the outfile GRIB file
-	 print 'Successfully output temp_fcst.grb2'
+	 print('Successfully output temp_fcst.grb2')
 
    # Close files
    if dataSource == 1: idx.close()    # Close the input GRIB file
@@ -337,18 +337,58 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 
    return met_data
 
+def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa), code from UPP ./INITPOST.F
+   PTOP_LOW  = 64200.
+   PTOP_MID  = 35000.
+   PTOP_HIGH = 15000.
+
+   if pmid.shape != cfr.shape:  # sanity check
+      print('dimension mismatch')
+      sys.exit() # sanity check
+
+   nlocs, nlevs = pmid.shape
+
+   cfracl = np.zeros(nlocs)
+   cfracm = np.zeros(nlocs)
+   cfrach = np.zeros(nlocs)
+
+   for i in range(0,nlocs):
+      idxLow  = np.where( pmid[i,:] >= PTOP_LOW)[0] # using np.where with just 1 argument returns tuple
+      idxMid  = np.where( ( pmid[i,:] < PTOP_LOW) & (pmid[i,:] >= PTOP_MID) )[0]
+      idxHigh = np.where( ( pmid[i,:] < PTOP_MID) & (pmid[i,:] >= PTOP_HIGH))[0]
+
+      # use conditions incase all indices are missing
+      if (len(idxLow) >0 ):  cfracl[i] = np.max( cfr[i,idxLow] )
+      if (len(idxMid) >0 ):  cfracm[i] = np.max( cfr[i,idxMid] )
+      if (len(idxHigh) >0 ): cfrach[i] = np.max( cfr[i,idxHigh] )
+
+   # This is the fortran code put into python format
+   #for i in range(0,nlocs):
+   #   for k in range(0,nlevs):
+   #      if pmid(i,k) >= PTOP_LOW:
+   #	 cfracl(i) = np.max( [cfracl(i),cfr(i,k)] ) # Low
+   #      elif pmid(i,k) < PTOP_LOW and pmid(i,k) >= PTOP_MID:
+   #	 cfracm(i) = np.max( [cfracm(i),cfr(i,k)] ) # Mid
+   #      elif pmid(i,k) < PTOP_MID and pmid(i,k) >= PTOP_HIGH: # High
+   #	 cfrach(i) = np.max( [cfrach(i),cfr(i,k)] )
+
+   return cfracl, cfracm, cfrach
+
 def point2point(source,inputDir,satellite,channel,dataSource):
 
-   # Variable to pull
-   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' # Forecast variable
-   if dataSource == 2: v = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
+   # Static Variables for QC and obs
+   qcVar  = 'brightness_temperature_'+str(channel)+'@EffectiveQC0' # QC variable
+   obsVar = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
 
-   # Variable for QC
-   qcVar = 'brightness_temperature_'+str(channel)+'@EffectiveQC0'
+   # Variable to pull
+#  if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' # Forecast variable
+#  if dataSource == 2: v = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
+   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@depbg' # OMB
+   if dataSource == 2: v = obsVar
 
    # Get list of files.  There is one file per processor
    files = os.listdir(inputDir)
-   inputFiles = fnmatch.filter(files,'obsout_omb_'+satellite+'*nc4') # returns relative path names
+   inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
    inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
    if len(inputFiles) == 0: return -99999, -99999 # if no matching files, force a failure
 
@@ -356,21 +396,55 @@ def point2point(source,inputDir,satellite,channel,dataSource):
    allData, allDataQC = [], []
    for inputFile in inputFiles:
       nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
-      print 'Trying to read ',v,' from ',inputFile
+      print('Trying to read ',v,' from ',inputFile)
 
-      # Read data
+      # Read forecast/obs data
       read_var = nc_fid.variables[v]         # extract/copy the data
    #  read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
       this_var  = np.array( read_var )        # to numpy array
    #  this_var = np.where( this_var==read_missing, np.nan, this_var )
-      allData.append(this_var)
+
+      if dataSource == 1:
+         obsData = np.array( nc_fid.variables[obsVar])
+         this_var = obsData - this_var # get background/forecast value (O - OMB = B)
 
       #Read QC data
       qcData = np.array(nc_fid.variables[qcVar])
-      allDataQC.append(qcData)
 
       # Sanity check
       if qcData.shape != this_var.shape: return -99999, -99999 # shapes should match.
+
+      if 'abi' in satellite or 'ahi' in satellite:
+	 cldfraThresh = 20.0 # percent
+         obsCldfra = np.array( nc_fid.variables['cloud_area_fraction@MetaData'] )*100.0 # Get into %...observed cloud fraction (AHI/ABI only)
+
+	 geoValsFile = inputFile.replace('obsout','geovals')
+	 if not os.path.exists(geoValsFile):
+	    print(geoValsFile+' not there. exit')
+	    sys.exit()
+	 nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
+	 fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
+         pressure = np.array( nc_fid2.variabes['air_pressure']) # Pa
+	 low,mid,high = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high cloud fractions
+	 tmp = np.vstack( (cfracl,cfracm,cfrach)) # stack the rows into one 2d array
+	 fcstTotCldFra = np.max(tmp,axis=0) # get maximum value
+
+	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
+	 if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these shouls all match
+	    qcData = np.where( (fcstTotCldFra > cldfraThresh) & (obsCldfra > cldfraThresh), qcData, 90)
+	 else:
+	    print('shape mismatch')
+	    return -99999, -99999
+	   
+	#ydiagFile = inputFile.replace('obsout','ydiags')
+	#if not os.path.exists(ydiagFile):
+	#   print(ydiagFile+' not there. exit')
+	#   sys.exit()
+    
+
+      # Append to arrays
+      allData.append(this_var)
+      allDataQC.append(qcData)
 
    # Get the indices with acceptable QC
    allQC = np.concatenate(allDataQC) # Put list of numpy arrays into a single long 1-D numpy array.  All QC data.
@@ -379,7 +453,7 @@ def point2point(source,inputDir,satellite,channel,dataSource):
    # Now get all the forecast/observed brightness temperature data with acceptable QC
    this_var = np.concatenate(allData)[idx] # Put list of numpy arrays into a single long 1-D numpy array. This is all the forecast/obs data with good QC
    numObs = this_var.shape[0] # number of points for one channel
-   print 'Number of obs :',numObs
+   print('Number of obs :',numObs)
 
    # Assume all the points actually fit into a square grid. Get the side of the square (use ceil to round up)
    l = np.ceil(np.sqrt(numObs)).astype('int') # Length of the side of the square
@@ -452,8 +526,8 @@ def getAttrArray(source,variable,initTime,validTime):
       'grid': getGridInfo(source,griddedDatasets[source]['gridType'])
    }
 
-   #print attrs
-   #print griddedDatasets[source]
+   #print(attrs)
+   #print(griddedDatasets[source])
 
    return attrs
 

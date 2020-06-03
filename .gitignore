@@ -2,4 +2,6 @@
 log/
 metprd/
 xml/*.db
+bin/*.pdf
+bin/*.png
 
