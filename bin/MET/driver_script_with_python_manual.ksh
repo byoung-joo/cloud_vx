@@ -40,12 +40,20 @@ DATE=/bin/date
 #module load met/8.0_python
 #ncar_pylib
 
+# MET v8.1--this is what we used prior to 18 June 2020
+#source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
+#module purge
+#module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
+#module load met/8.1_python
+#ncar_pylib
+
+# MET v9.0
 source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
 module purge
 module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
-module load met/8.1_python
+module load met/9.0
+module load ncarenv
 ncar_pylib
-
 
 # Vars used for manual testing of the script
 export START_TIME=2017060500 #2018110100
@@ -54,7 +62,8 @@ export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
 export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
-export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
+#export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
+export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
@@ -264,14 +273,16 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
         # CSS get the verification thresholds.
 	# This could be done further up, but we don't copy python_stuff.py until the above line.
-        export thresholds=[`python -c "import python_stuff; print python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
-        export interp_method=`python -c "import python_stuff; print python_stuff.getInterpMethod('$VX_VAR')"` 
+        export thresholds=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
+        export interp_method=`python -c "import python_stuff; python_stuff.getInterpMethod('$VX_VAR')"` 
+
 	if [[ $interp_method == 'BILIN' ]]; then
 	   export regrid_width=2
 	elif [[ $interp_method == 'NEAREST' ]]; then
 	   export regrid_width=1
 	fi
         echo "THRESHOLDS = $thresholds"
+        echo "INTERP_METHOD = $interp_method"
 
         for i in 1 2; do
 	   if [ $i == 1 ]; then
