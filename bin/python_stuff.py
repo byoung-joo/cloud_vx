@@ -82,10 +82,12 @@ verifVariables = {
 
 def getThreshold(variable):
    x = verifVariables[variable]['thresholds']
+   print(x) # needed for python 3 to read variable into csh variable
    return x
 
 def getInterpMethod(variable):
    x = verifVariables[variable]['interpMethod'].upper()
+   print(x) # needed for python 3 to read variable into csh variable
    return x
 
 def getTotalCloudFrac(source,data):
@@ -245,33 +247,33 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    for v in varsToRead:
       if dataSource == 1:  # dataSource == 1 means forecast
          # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
-	 if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
-	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
-	 else:
-	    x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+         if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
+            x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
+         else:
+            x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
 	 
-	 if x.shortName != v['shortName']: print('Name mismatch!')
+         if x.shortName != v['shortName']: print('Name mismatch!')
 	#read_var, yy = x.latlons() #x.data()[0] # x.values # this somehow works but gives wrong data
-	 read_var = x.values # x.data()[0] # x.values
-	 read_missing = x.missingValue
-	 print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
+         read_var = x.values # x.data()[0] # x.values
+         read_missing = x.missingValue
+         print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
          
 	 # The missing value (read_missing) for GALWEM cloud base/height is 9999, which is idiotic because
 	 # those could be actual values. So we need to use the masked array part (below) to handle which
 	 # values are missing.  We also set read_missing to something unphysical to essentially disable it.
 	 # Finally, if we don't change the 'missingValue' property in the GRIB2 file we are eventually outputting,
 	 # the bitmap will get all messed up, because it will be based on 9999 instead of $missing_values
-	 if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
-	    read_missing = -9999.
-	    x['missingValue'] = read_missing
+         if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight': 
+            read_missing = -9999.
+            x['missingValue'] = read_missing
 	    #These are masked numpy arrays, with mask = True where there is a missing value (no cloud)
 	    #Use np.ma.filled to create an ndarray where mask = True values are set to np.nan
-	    read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
+            read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
 
       if dataSource == 2:  # dataSource == 2 means obs
-	 read_var = nc_fid.variables[v]         # extract/copy the data
-	 read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
-	 print('Reading ', v)
+         read_var = nc_fid.variables[v]         # extract/copy the data
+         read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+         print('Reading ', v)
 
       this_var = np.array( read_var )        # to numpy array
      #print(read_missing, np.nan)
@@ -324,12 +326,12 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    outputFcstFile = True
    if dataSource == 1: 
       if outputFcstFile:
-	 grbtmp = x
-	 grbtmp['values']=met_data
-	 grbout = open('temp_fcst.grb2','ab')
-	 grbout.write(grbtmp.tostring())
-	 grbout.close() # Close the outfile GRIB file
-	 print('Successfully output temp_fcst.grb2')
+         grbtmp = x
+         grbtmp['values']=met_data
+         grbout = open('temp_fcst.grb2','ab')
+         grbout.write(grbtmp.tostring())
+         grbout.close() # Close the outfile GRIB file
+         print('Successfully output temp_fcst.grb2')
 
    # Close files
    if dataSource == 1: idx.close()    # Close the input GRIB file
@@ -417,48 +419,48 @@ def point2point(source,inputDir,satellite,channel,dataSource):
       if qcData.shape != this_var.shape: return -99999, -99999 # shapes should match.
 
       if 'abi' in satellite or 'ahi' in satellite:
-	 cldfraThresh = 20.0 # percent
+         cldfraThresh = 20.0 # percent
          obsCldfra = np.array( nc_fid.variables['cloud_area_fraction@MetaData'] )*100.0 # Get into %...observed cloud fraction (AHI/ABI only)
 
-	 geoValsFile = inputFile.replace('obsout','geoval')
-	 if not os.path.exists(geoValsFile):
-	    print(geoValsFile+' not there. exit')
-	    sys.exit()
+         geoValsFile = inputFile.replace('obsout','geoval')
+         if not os.path.exists(geoValsFile):
+            print(geoValsFile+' not there. exit')
+            sys.exit()
 
-	 nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
-	 fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
+         nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
+         fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
          pressure   = np.array( nc_fid2.variables['air_pressure']) # Pa
-	 low,mid,high,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high/total cloud fractions
-	 nc_fid2.close()
+         low,mid,high,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high/total cloud fractions
+         nc_fid2.close()
 
 	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
-	 condition = 'any'
-	 yes = 2.0
-	 no = 0.0
-	 if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these should all match
-	    print('Checking F/O correspondence for ABI/AHI')
-	    if   condition.lower().strip() == 'clearOnly'.lower():
-	       qcData = np.where( (fcstTotCldFra < cldfraThresh) & (obsCldfra < cldfraThresh), qcData, missing_values) # clear in both F and O
-	    elif condition.lower().strip() == 'cloudyOnly'.lower():
-	       qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (obsCldfra >= cldfraThresh), qcData, missing_values) # cloudy in both F and O
-	    elif condition.lower().strip() == 'cloudEventLow'.lower():
-	       if dataSource == 1: this_var = np.where( low           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
-	    elif condition.lower().strip() == 'cloudEventMid'.lower():
-	       if dataSource == 1: this_var = np.where( mid           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
-	    elif condition.lower().strip() == 'cloudEventHigh'.lower():
-	       if dataSource == 1: this_var = np.where( high          > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
-	    elif condition.lower().strip() == 'cloudEventTot'.lower():
-	       if dataSource == 1: this_var = np.where( fcstTotCldFra > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+         condition = 'any'
+         yes = 2.0
+         no  = 0.0
+         if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these should all match
+            print('Checking F/O correspondence for ABI/AHI')
+            if   condition.lower().strip() == 'clearOnly'.lower():
+               qcData = np.where( (fcstTotCldFra < cldfraThresh) & (obsCldfra < cldfraThresh), qcData, missing_values) # clear in both F and O
+            elif condition.lower().strip() == 'cloudyOnly'.lower():
+               qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (obsCldfra >= cldfraThresh), qcData, missing_values) # cloudy in both F and O
+            elif condition.lower().strip() == 'cloudEventLow'.lower():
+               if dataSource == 1: this_var = np.where( low           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+            elif condition.lower().strip() == 'cloudEventMid'.lower():
+               if dataSource == 1: this_var = np.where( mid           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+            elif condition.lower().strip() == 'cloudEventHigh'.lower():
+               if dataSource == 1: this_var = np.where( high          > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+            elif condition.lower().strip() == 'cloudEventTot'.lower():
+               if dataSource == 1: this_var = np.where( fcstTotCldFra > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
 
-	    print('number removed = ', (qcData==missing_values).sum())
-	   #print('number passed   = ', qcData.shape[0] - (qcData==missing_values).sum())
-	 else:
-	    print('shape mismatch')
-	    return -99999, -99999
+            print('number removed = ', (qcData==missing_values).sum())
+           #print('number passed   = ', qcData.shape[0] - (qcData==missing_values).sum())
+         else:
+            print('shape mismatch')
+            return -99999, -99999
 	   
       # Append to arrays
       allData.append(this_var)
