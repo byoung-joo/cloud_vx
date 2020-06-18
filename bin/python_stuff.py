@@ -450,7 +450,7 @@ def point2point(source,inputDir,satellite,channel,dataSource):
 	    elif condition.lower().strip() == 'cloudEventHigh'.lower():
 	       if dataSource == 1: this_var = np.where( high          > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
 	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
-	    else condition.lower().strip() == 'cloudEventTot'.lower():
+	    elif condition.lower().strip() == 'cloudEventTot'.lower():
 	       if dataSource == 1: this_var = np.where( fcstTotCldFra > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
 	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
 
