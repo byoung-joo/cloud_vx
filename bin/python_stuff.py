@@ -338,13 +338,13 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    return met_data
 
 def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa), code from UPP ./INITPOST.F
-   PTOP_LOW  = 64200.
+   PTOP_LOW  = 64200. # UPP layer bounds
    PTOP_MID  = 35000.
    PTOP_HIGH = 15000.
 
    if pmid.shape != cfr.shape:  # sanity check
       print('dimension mismatch')
-      sys.exit() # sanity check
+      sys.exit()
 
    nlocs, nlevs = pmid.shape
 
@@ -353,14 +353,17 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
    cfrach = np.zeros(nlocs)
 
    for i in range(0,nlocs):
-      idxLow  = np.where( pmid[i,:] >= PTOP_LOW)[0] # using np.where with just 1 argument returns tuple
-      idxMid  = np.where( ( pmid[i,:] < PTOP_LOW) & (pmid[i,:] >= PTOP_MID) )[0]
-      idxHigh = np.where( ( pmid[i,:] < PTOP_MID) & (pmid[i,:] >= PTOP_HIGH))[0]
+      idxLow  = np.where(   pmid[i,:] >= PTOP_LOW)[0] # using np.where with just 1 argument returns tuple
+      idxMid  = np.where(  (pmid[i,:] <  PTOP_LOW) & (pmid[i,:] >= PTOP_MID))[0]
+      idxHigh = np.where(  (pmid[i,:] <  PTOP_MID) & (pmid[i,:] >= PTOP_HIGH))[0]
 
       # use conditions incase all indices are missing
       if (len(idxLow) >0 ):  cfracl[i] = np.max( cfr[i,idxLow] )
       if (len(idxMid) >0 ):  cfracm[i] = np.max( cfr[i,idxMid] )
       if (len(idxHigh) >0 ): cfrach[i] = np.max( cfr[i,idxHigh] )
+
+   tmp = np.vstack( (cfracl,cfracm,cfrach)) # stack the rows into one 2d array
+   cldfraMax = np.max(tmp,axis=0) # get maximum value across low/mid/high for each pixel
 
    # This is the fortran code put into python format...double loop unnecessary and slow
    #for i in range(0,nlocs):
@@ -372,7 +375,7 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
    #      elif pmid(i,k) < PTOP_MID and pmid(i,k) >= PTOP_HIGH: # High
    #	 cfrach(i) = np.max( [cfrach(i),cfr(i,k)] )
 
-   return cfracl, cfracm, cfrach
+   return cfracl, cfracm, cfrach, cldfraMax
 
 def point2point(source,inputDir,satellite,channel,dataSource):
 
@@ -380,19 +383,18 @@ def point2point(source,inputDir,satellite,channel,dataSource):
    qcVar  = 'brightness_temperature_'+str(channel)+'@EffectiveQC0' # QC variable
    obsVar = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
 
-   # Variable to pull
-#  if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' # Forecast variable
-#  if dataSource == 2: v = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
-   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@depbg' # OMB
-   if dataSource == 2: v = obsVar
-
    # Get list of files.  There is one file per processor
    files = os.listdir(inputDir)
    inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
    inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
    if len(inputFiles) == 0: return -99999, -99999 # if no matching files, force a failure
 
-   # Open the files and put data in array
+   # Variable to pull for brightness temperature
+#  if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' # Forecast variable
+   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@depbg' # OMB
+   if dataSource == 2: v = obsVar
+
+   # Read the files and put data in array
    allData, allDataQC = [], []
    for inputFile in inputFiles:
       nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
@@ -404,7 +406,7 @@ def point2point(source,inputDir,satellite,channel,dataSource):
       this_var  = np.array( read_var )        # to numpy array
    #  this_var = np.where( this_var==read_missing, np.nan, this_var )
 
-      if dataSource == 1:
+      if dataSource == 1: # If true, we read in OMB data
          obsData = np.array( nc_fid.variables[obsVar])
          this_var = obsData - this_var # get background/forecast value (O - OMB = B)
 
@@ -422,31 +424,47 @@ def point2point(source,inputDir,satellite,channel,dataSource):
 	 if not os.path.exists(geoValsFile):
 	    print(geoValsFile+' not there. exit')
 	    sys.exit()
+
 	 nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
 	 fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
-         pressure = np.array( nc_fid2.variables['air_pressure']) # Pa
-	 low,mid,high = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high cloud fractions
-	 tmp = np.vstack( (low,mid,high)) # stack the rows into one 2d array
-	 fcstTotCldFra = np.max(tmp,axis=0) # get maximum value
+         pressure   = np.array( nc_fid2.variables['air_pressure']) # Pa
+	 low,mid,high,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high/total cloud fractions
+	 nc_fid2.close()
 
 	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
+	 condition = 'any'
+	 yes = 2.0
+	 no = 0.0
 	 if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these should all match
 	    print('Checking F/O correspondence for ABI/AHI')
-	    qcData = np.where( (fcstTotCldFra > cldfraThresh) & (obsCldfra > cldfraThresh), qcData, 90)
-	    print('number removed = ', (qcData==90).sum())
-	    print('number passed   = ', qcData.shape[0] - (qcData==90).sum())
+	    if   condition.lower().strip() == 'clearOnly'.lower():
+	       qcData = np.where( (fcstTotCldFra < cldfraThresh) & (obsCldfra < cldfraThresh), qcData, missing_values) # clear in both F and O
+	    elif condition.lower().strip() == 'cloudyOnly'.lower():
+	       qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (obsCldfra >= cldfraThresh), qcData, missing_values) # cloudy in both F and O
+	    elif condition.lower().strip() == 'cloudEventLow'.lower():
+	       if dataSource == 1: this_var = np.where( low           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+	    elif condition.lower().strip() == 'cloudEventMid'.lower():
+	       if dataSource == 1: this_var = np.where( mid           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+	    elif condition.lower().strip() == 'cloudEventHigh'.lower():
+	       if dataSource == 1: this_var = np.where( high          > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+	    else condition.lower().strip() == 'cloudEventTot'.lower():
+	       if dataSource == 1: this_var = np.where( fcstTotCldFra > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+	       if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+
+	    print('number removed = ', (qcData==missing_values).sum())
+	   #print('number passed   = ', qcData.shape[0] - (qcData==missing_values).sum())
 	 else:
 	    print('shape mismatch')
 	    return -99999, -99999
 	   
-	#ydiagFile = inputFile.replace('obsout','ydiags')
-	#if not os.path.exists(ydiagFile):
-	#   print(ydiagFile+' not there. exit')
-	#   sys.exit()
-
       # Append to arrays
       allData.append(this_var)
       allDataQC.append(qcData)
+
+      nc_fid.close() # done with the file, so close it before going to next file in loop
 
    # Get the indices with acceptable QC
    allQC = np.concatenate(allDataQC) # Put list of numpy arrays into a single long 1-D numpy array.  All QC data.

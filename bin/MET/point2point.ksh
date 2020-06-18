@@ -53,10 +53,11 @@ export DOMAIN_LIST="global"  # Probably don't need
 export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config 
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx 
-export FCST_DIR=/glade/scratch/schwartz/pandac_output/junmei
+#export FCST_DIR=/glade/scratch/schwartz/pandac_output/junmei
+export FCST_DIR=/glade/scratch/guerrett/pandac/120km_3denvar_conv_clramsua_cldabi/VF/bg
 export RAW_OBS=$FCST_DIR
-export SATELLITE="amsua_n19" # format is important and must match filename format
-export CHANNEL_LIST="5 6 7 8 9"
+export SATELLITE="abi_g16" #"amsua_n19" # format is important and must match filename format
+export CHANNEL_LIST="8 9 10" #"5 6 7 8 9"
 export GS_CONFIG_LIST="${MET_CONFIG}/point2point_all" # MET Grid-Stat and MODE configuration files to be used
 
 # Print run parameters
@@ -156,7 +157,8 @@ for DOMAIN in ${DOMAIN_LIST}; do
     #FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
    #FCST_FILE="/glade/scratch/wuyl/test2/Lekima/da/obserr/plot/diag/diags_himawari-8-ahi_2019081100.nc"
    #FCST_FILE="/glade/scratch/wuyl/test2/pandac/mw/15km_mpas/6hfcst_thomp_DA_bc_noqc_thomp_ocean/2018041806/Data/obsout_3dvar_amsua_n19--hydro_0252.nc4"
-    THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/f${FCST_TIME}
+   #THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/f${FCST_TIME}
+    THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/Data
 
     # Make sure the directory exists
     if [ ! -d ${THIS_FCST_DIR} ]; then
