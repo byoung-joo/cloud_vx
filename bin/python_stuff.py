@@ -211,6 +211,8 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
 
    source = source.upper().strip()  # Force uppercase and get rid of blank spaces, for safety
 
+   print('dataSource = ',dataSource)
+
    if dataSource == 1:  # dataSource == 1 means forecast
       varsToRead = verifVariablesModel[variable][source] # returns a list whose ith element is a dictionary
      #grbs = pygrib.open(inputFile)
@@ -322,8 +324,9 @@ def getDataArray(inputFile,source,variable,validTime,dataSource):
    # If a forecast file, output a GRIB file with 
    # 1 record containing the met_data
    # This is a hack, because right now, MET python embedding doesn't work with pygrib,
-   #  so output the data to a temporary file, and then have MET read the temporary grib file.
-   outputFcstFile = True
+   #    so output the data to a temporary file, and then have MET read the temporary grib file.
+   # Starting with version 9.0 of MET, the hack isn't needed, and MET python embedding works with pygrib
+   outputFcstFile = True  # MUST be True for MET version < 9.0.  For MET 9.0+, optional
    if dataSource == 1: 
       if outputFcstFile:
          grbtmp = x

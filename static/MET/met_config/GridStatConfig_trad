@@ -59,18 +59,17 @@ fcst = {
 //        name       = "${metConfName}";
 //        GRIB_lvl_typ = ${metConfGribLvlTyp};
 //        GRIB_lvl_val1 = ${metConfGribLvlVal1};
-
 //        level      = [ "R320" ];
 //        cat_thresh = [ >=100, >=50 ];
 
           // Use this if doing python embedding
-//        name       = "python_script_fcst.py";
+          name       = "python_script_fcst.py";
 
           // Use this if reading from temporary GRIB2 file
 	  // created by running python code
-          //name       = "APCP";
-	  name       = "${metConfName}";
-          level      = [ "R01" ];
+          ///////////name       = "APCP";
+//        name       = "${metConfName}";
+//        level      = [ "R01" ];
 
         //cat_thresh = ${thresholds};
 	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0, >SFP20, >SFP30, >SFP40, >SFP50, >SFP60, >SFP70, >SFP80, ==FBIAS1, ==FBIAS1, ==FBIAS1, ==FBIAS1, ==FBIAS1 ];
@@ -247,6 +246,7 @@ grid_weight_flag = NONE;
 rank_corr_flag   = FALSE;
 tmp_dir          = "/tmp";
 output_prefix    = "${MODEL}_F${FCST_TIME}_${VX_VAR}";
-version          = "V8.1";
+version          = "V9.0";
+//version          = "V8.1";
 
 ////////////////////////////////////////////////////////////////////////////////

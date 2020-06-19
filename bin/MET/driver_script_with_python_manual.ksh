@@ -54,6 +54,12 @@ module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
 module load met/9.0
 module load ncarenv
 ncar_pylib
+   # specify full path to local python exectuable...needed such that MET
+   # executes the python script with the user's version of python (and environment and loaded packages) rather than the one
+   # defined at MET compilation time.
+export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt/python/3.6.8/gnu/8.3.0/pkg-library/20200417/bin/python
+
+####
 
 # Vars used for manual testing of the script
 export START_TIME=2017060500 #2018110100
@@ -323,8 +329,9 @@ EOF
 	   #   that can be read into MET directly, but which contains potentially derived fields.
 	   if [ $i == 1 ]; then 
 	      rm -f ./temp_fcst.grb2
-	      python $scriptName # Will create temp_fcst.grb2
-	      FCST_FILE=./temp_fcst.grb2
+	     #python $scriptName # Will create temp_fcst.grb2
+	     #FCST_FILE=./temp_fcst.grb2
+	      FCST_FILE=PYTHON_NUMPY
 	   fi;
 
         done # loop over i=1,2, once for forecast, another for obs
@@ -334,7 +341,7 @@ EOF
 
 	   # Run grid_stat
 	   ${MET_EXE_ROOT}/grid_stat \
-	     $FCST_FILE \
+	     $FCST_FILE    \
 	     PYTHON_NUMPY \
 	     ${CONFIG_FILE} \
 	     -outdir ${workdir}/${VX_VAR}/${VX_OBS} \
