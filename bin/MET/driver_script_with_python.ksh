@@ -40,27 +40,42 @@ DATE=/bin/date
 #module load met/8.0_python
 #ncar_pylib
 
+# MET v8.1--this is what we used prior to 18 June 2020
+#source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
+#module purge
+#module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
+#module load met/8.1_python
+#ncar_pylib
+
+# MET v9.0
 source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
 module purge
 module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
-module load met/8.1_python
+module load met/9.0
+module load ncarenv
 ncar_pylib
+   # specify full path to local python exectuable...needed such that MET
+   # executes the python script with the user's version of python (and environment and loaded packages) rather than the python build
+   # defined at MET compilation time.
+export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt/python/3.6.8/gnu/8.3.0/pkg-library/20200417/bin/python
 
+####
 
 # Vars used for manual testing of the script
 #export START_TIME=2017060500 #2018110100
 #export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
-#export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5"
+#export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5" # WWMCA
 #export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 #export DOMAIN_LIST="global"
 #export GRID_VX="FCST"
 #export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
+#export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 #export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 #export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 ##export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
-#export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM
+#export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM
 #export RAW_OBS=/glade/scratch/schwartz/OBS
-#export MODEL="GALWEM" # Options are "GFS" or "GALWEM"
+#export MODEL="GALWEM" # Options are "GFS", "GALWEM17", or "GALWEM"
 
 # Print run parameters
 ${ECHO}
@@ -178,7 +193,7 @@ for DOMAIN in ${DOMAIN_LIST}; do
             #TMPlclt   0,213,0   0,0,0,0 ** low cloud top level Temperature [K]
             #TMPmclt   0,223,0   0,0,0,0 ** middle cloud top level Temperature [K]
             #TMPhclt   0,233,0   0,0,0,0 ** high cloud top level Temperature [K]
-    if [ $MODEL == "GFS" ]; then
+    if [[ $MODEL == "GFS" ]]; then
        if [ $VX_VAR == "totalCloudFrac" ]; then
 	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        elif [ $VX_VAR == "lowCloudFrac" ]; then
@@ -190,7 +205,7 @@ for DOMAIN in ${DOMAIN_LIST}; do
        elif [ $VX_VAR == "binaryCloud"    ]; then
 	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        fi
-    elif [ $MODEL == "GALWEM" ]; then
+    elif [[ $MODEL == "GALWEM17" || $MODEL == "GALWEM" ]]; then
        if [ $VX_VAR == "totalCloudFrac" ]; then
 	   export metConfName="TCDC";export metConfGribLvlTyp=10;export metConfGribLvlVal1=0
        elif [ $VX_VAR == "lowCloudFrac" ]; then
@@ -226,12 +241,14 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
 	if [ ${MODEL} == "GFS" ]; then
 	    FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-	elif [ ${MODEL} == "GALWEM" ]; then
+	elif [ ${MODEL} == "GALWEM17" ]; then
 	    FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
+	elif [ ${MODEL} == "GALWEM" ]; then
+	    FCST_FILE=${FCST_DIR}/${START_TIME}/PS.557WW_SC.U_DI.C_DC.GRID_GP.GALWEM-GD_SP.COMPLEX_GR.C0P25DEG_AR.GLOBAL_PA.NCAR_DD.${YYYYMMDD}_CY.${HH}_FH.${FCST_HRS}_DF.GR2
 	else
             ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
             exit 1
-    fi
+        fi
 
 	# Make sure FCST_FILE exists
 	if [ ! -e ${FCST_FILE} ]; then
@@ -251,6 +268,8 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	  OBS_FILE=${RAW_OBS}/${VX_OBS}/${VX_OBS}_400.tavg1_2d_${TMP_YYYYMMDD}_${TMP_HHMM}.nc4
         elif  [ ${VX_OBS} == "ERA5" ]; then
           OBS_FILE=${RAW_OBS}/${VX_OBS}/${VX_OBS}_${VDATE}.nc
+        elif  [ ${VX_OBS} == "WWMCA" ]; then
+          OBS_FILE=${RAW_OBS}/${VX_OBS}/WWMCA_${VDATE}00_ECE15_M.GR1
         fi
 
 	if [ ! -e ${OBS_FILE} ]; then
@@ -264,14 +283,16 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
         # CSS get the verification thresholds.
 	# This could be done further up, but we don't copy python_stuff.py until the above line.
-        export thresholds=[`python -c "import python_stuff; print python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
-        export interp_method=`python -c "import python_stuff; print python_stuff.getInterpMethod('$VX_VAR')"` 
+        export thresholds=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
+        export interp_method=`python -c "import python_stuff; python_stuff.getInterpMethod('$VX_VAR')"` 
+
 	if [[ $interp_method == 'BILIN' ]]; then
 	   export regrid_width=2
 	elif [[ $interp_method == 'NEAREST' ]]; then
 	   export regrid_width=1
 	fi
         echo "THRESHOLDS = $thresholds"
+        echo "INTERP_METHOD = $interp_method"
 
         for i in 1 2; do
 	   if [ $i == 1 ]; then
@@ -289,17 +310,12 @@ import os
 import numpy as np
 import python_stuff  # this is where all the work is done
 
-#fcstFile = '$FCST_FILE'
-#obsFile = '$OBS_FILE'
 dataFile = '$dataFile'
 dataSource = '$dataSource'
 variable = '$VX_VAR'
 
 # With the data/files/valid_time specified in this script, pass relevant variables to python function (from python_stuff.py)
-# TODO: fcstFile does nothing, yet. Need to resolve "grib2" issue (at least for GFS forecast in grib2)
-# TODO: remove validTime as we will have a separate plotting script.
-#met_data = dict(fcstFile,obsFile,obsSource,variable,${VDATE})
-met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${VDATE},${i})
+met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${i})
 
 # TODO: This is for "obs". If we ingest forecast later, we need to improve this.
 #attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
@@ -312,8 +328,9 @@ EOF
 	   #   that can be read into MET directly, but which contains potentially derived fields.
 	   if [ $i == 1 ]; then 
 	      rm -f ./temp_fcst.grb2
-	      python $scriptName # Will create temp_fcst.grb2
-	      FCST_FILE=./temp_fcst.grb2
+	     #python $scriptName # Will create temp_fcst.grb2
+	     #FCST_FILE=./temp_fcst.grb2
+	      FCST_FILE=PYTHON_NUMPY
 	   fi;
 
         done # loop over i=1,2, once for forecast, another for obs

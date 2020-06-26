@@ -300,7 +300,7 @@ dataFile = '$dataFile'
 dataSource = '$dataSource'
 variable = '$VX_VAR_PYEMBED'
 
-met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${VDATE},2)
+met_data = python_stuff.getDataArray(dataFile,dataSource,variable,2)
 
 # TODO: This is for "obs". If we ingest forecast later, we need to improve this.
 #attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
