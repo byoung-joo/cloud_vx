@@ -18,7 +18,7 @@
 #             MET_CONFIG = The full path of the MET configuration files.
 #               DATAROOT = Top-level data directory of WRF output.
 #               FCST_DIR = Directory containing the forecasts to be used.
-#                RAW_OBS = Directory containing observations to be used.
+#         GOES16_RETRIEVAL_DIR = Directory containing GOES-16 retrieval observations to be used.
 #              SATELLITE = The satellite being evaluated.
 #           CHANNEL_LIST = A list of observation sources to be used.
 #
@@ -46,7 +46,7 @@ module load met/8.1_python
 ncar_pylib
 
 # Vars used for manual testing of the script
-export START_TIME=2018051100 #2018110100
+export START_TIME=2018041500 #2018110100
 export FCST_TIME_LIST="24" # "12 09" # 6 9 12 24 36 48"
 export VX_VAR_LIST="brightnessTemp"
 export DOMAIN_LIST="global"  # Probably don't need
@@ -54,8 +54,8 @@ export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config 
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx 
 #export FCST_DIR=/glade/scratch/schwartz/pandac_output/junmei
-export FCST_DIR=/glade/scratch/guerrett/pandac/120km_3denvar_conv_clramsua_cldabi/VF/bg
-export RAW_OBS=$FCST_DIR
+export FCST_DIR=/glade/scratch/guerrett/pandac/guerrett_3denvar_conv_clramsua_120km/VF/bg
+export GOES16_RETRIEVAL_DIR=/glade/scratch/schwartz/OBS/GOES16
 export SATELLITE="abi_g16" #"amsua_n19" # format is important and must match filename format
 export CHANNEL_LIST="8 9 10" #"5 6 7 8 9"
 export GS_CONFIG_LIST="${MET_CONFIG}/point2point_all" # MET Grid-Stat and MODE configuration files to be used
@@ -72,7 +72,7 @@ ${ECHO} "  MET_EXE_ROOT = ${MET_EXE_ROOT}"
 ${ECHO} "    MET_CONFIG = ${MET_CONFIG}"
 ${ECHO} "      DATAROOT = ${DATAROOT}"
 ${ECHO} "      FCST_DIR = ${FCST_DIR}"
-${ECHO} "       RAW_OBS = ${RAW_OBS}"
+${ECHO} "  GOES16_RETRIEVAL_DIR = ${GOES16_RETRIEVAL_DIR}"
 ${ECHO} "     SATELLITE = ${SATELLITE}"
 ${ECHO} "      CHANNELS = ${CHANNEL_LIST}"
 
@@ -88,9 +88,9 @@ if [ ! -d "${FCST_DIR}" ]; then
   exit 1
 fi
 
-# Make sure RAW_OBS directory exists
-if [ ! -d ${RAW_OBS} ]; then
-  ${ECHO} "ERROR: RAW_OBS, ${RAW_OBS}, does not exist!"
+# Make sure GOES16_RETRIEVAL_DIR directory exists
+if [ ! -d ${GOES16_RETRIEVAL_DIR} ]; then
+  ${ECHO} "ERROR: GOES16_RETRIEVAL_DIR, ${GOES16_RETRIEVAL_DIR}, does not exist!"
   exit 1
 fi
 
@@ -111,7 +111,6 @@ export FCST_TIME
 # Go to working directory
 workdir=${DATAROOT}/metprd/${START_TIME}/f${FCST_TIME}
 ${MKDIR} -p ${workdir}
-cd ${workdir}
 
 # Loop through the veryfing obs dataset
 for CHANNEL in ${CHANNEL_LIST}; do
@@ -166,6 +165,21 @@ for DOMAIN in ${DOMAIN_LIST}; do
         exit 1
     fi
 
+    # Define GOES-16 retrieval file
+   #GOES16_FILE=${GOES16_RETRIEVAL_DIR}/...
+    GOES16_FILE=/glade/scratch/schwartz/OBS/GOES16/20200815/L2-CTP/OR_ABI-L2-CTPF-M6_G16_s20202280030202_e20202280039510_c20202280041194.nc
+    if [ ! -e ${GOES16_FILE} ]; then
+       ${ECHO} "ERROR: ${GOES16_FILE} does not exist!"
+       exit 1
+    fi
+
+    # Get the processed observation directory...probably same as FCST directory
+    OBS_DIR=$THIS_FCST_DIR
+    if [ ! -d ${OBS_DIR} ]; then
+	${ECHO} "ERROR: Could not find obs dir: ${OBS_DIR}"
+	exit 1
+    fi
+
     #######################################################################
     #
     #  Run Grid-Stat
@@ -179,23 +193,15 @@ for DOMAIN in ${DOMAIN_LIST}; do
             ${ECHO} "ERROR: ${CONFIG_FILE} does not exist!"
             exit 1
         fi
-
-        # Get the processed observation file 
-       OBS_DIR=$THIS_FCST_DIR
-
-	if [ ! -d ${OBS_DIR} ]; then
-	    ${ECHO} "ERROR: Could not find obs dir: ${OBS_DIR}"
-	    exit 1
-	fi
 	
 	thisDir=${workdir}/${SATELLITE}/channel${CHANNEL}
         ${MKDIR} -p ${thisDir}
 	cd ${thisDir}
         ${CP} ${DATAROOT}/bin/python_stuff.py .
 
-        # CSS get the verification thresholds.
+        # Get the verification thresholds.
 	# This could be done further up, but we don't copy python_stuff.py until the above line.
-        export thresholds=[`python -c "import python_stuff; print python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
+	export thresholds=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for lis
         echo "THRESHOLDS = $thresholds"
 
         for i in 1 2; do
@@ -215,7 +221,7 @@ import python_stuff  # this is where all the work is done
 dataDir = '$dataDir'
 variable = '$VX_VAR'
 
-met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},${i})
+met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},'${GOES16_FILE}',${i})
 attrs = python_stuff.getAttrArray('point',variable,'${START_TIME}','${VDATE}')
 attrs['grid'] = gridInfo
 EOF
@@ -240,11 +246,11 @@ EOF
 
 	# TODO: This is temporary plotting using MET executable.
 	# Run plot_data_plane
-	${MET_EXE_ROOT}/plot_data_plane PYTHON_NUMPY \
-	  ${workdir}/${SATELLITE}/channel${CHANNEL}/${SATELLITE}_channel${CHANNEL}_${START_TIME}_f${FCST_HRS}.ps \
-	  -title ${SATELLITE}_channel${CHANNEL}_${START_TIME}_f${FCST_HRS} \
-	  -color_table /glade/p/ral/jntp/MET/MET_releases/8.0/met-8.0/data/colortables/NCL_colortables/wh-bl-gr-ye-re.ctable \
-	  'name="python_script_obs.py";'
+#${MET_EXE_ROOT}/plot_data_plane PYTHON_NUMPY \
+#  ${workdir}/${SATELLITE}/channel${CHANNEL}/${SATELLITE}_channel${CHANNEL}_${START_TIME}_f${FCST_HRS}.ps \
+#  -title ${SATELLITE}_channel${CHANNEL}_${START_TIME}_f${FCST_HRS} \
+#  -color_table /glade/p/ral/jntp/MET/MET_releases/8.0/met-8.0/data/colortables/NCL_colortables/wh-bl-gr-ye-re.ctable \
+#  'name="python_script_obs.py";'
 
     done #CONFIG_FILE loop
 

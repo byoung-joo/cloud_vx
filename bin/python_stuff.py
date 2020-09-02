@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import datetime as dt
 from netCDF4 import Dataset  # http://code.google.com/p/netcdf4-python/
+from scipy.interpolate import NearestNDInterpolator, LinearNDInterpolator
 #### for Plotting
 import matplotlib.cm as cm
 import matplotlib.axes as maxes
@@ -17,6 +18,11 @@ import pygrib
 ###########################################
 
 missing_values = -9999.0  # for MET
+
+# UPP top layer bounds (Pa) for cloud layers
+PTOP_LOW  = 64200. # low for > 64200 Pa
+PTOP_MID  = 35000. # mid between 35000-64200 Pa
+PTOP_HIGH = 15000. # high between 15000-35000 Pa
 
 #entry for 'point' is for point-to-point comparison and is all dummy data (except for gridType) that is overwritten by point2point
 griddedDatasets =  {
@@ -362,9 +368,6 @@ def getDataArray(inputFile,source,variable,dataSource):
    return met_data
 
 def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa), code from UPP ./INITPOST.F
-   PTOP_LOW  = 64200. # UPP layer bounds
-   PTOP_MID  = 35000.
-   PTOP_HIGH = 15000.
 
    if pmid.shape != cfr.shape:  # sanity check
       print('dimension mismatch')
@@ -387,7 +390,7 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
       if (len(idxHigh) >0 ): cfrach[i] = np.max( cfr[i,idxHigh] )
 
    tmp = np.vstack( (cfracl,cfracm,cfrach)) # stack the rows into one 2d array
-   cldfraMax = np.max(tmp,axis=0) # get maximum value across low/mid/high for each pixel
+   cldfraMax = np.max(tmp,axis=0) # get maximum value across low/mid/high for each pixel (minimum overlap assumption)
 
    # This is the fortran code put into python format...double loop unnecessary and slow
    #for i in range(0,nlocs):
@@ -401,13 +404,134 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
 
    return cfracl, cfracm, cfrach, cldfraMax
 
-def point2point(source,inputDir,satellite,channel,dataSource):
+def getGOES16LatLon(g16_data_file):
+
+   # Start timer
+   startTime = dt.datetime.utcnow()
+
+   # designate dataset
+   g16nc = Dataset(g16_data_file, 'r')
+
+   # GOES-R projection info and retrieving relevant constants
+   proj_info = g16nc.variables['goes_imager_projection']
+   lon_origin = proj_info.longitude_of_projection_origin
+   H = proj_info.perspective_point_height+proj_info.semi_major_axis
+   r_eq = proj_info.semi_major_axis
+   r_pol = proj_info.semi_minor_axis
+
+   # Data info
+   lat_rad_1d = g16nc.variables['x'][:]
+   lon_rad_1d = g16nc.variables['y'][:]
+
+   # close file when finished
+   g16nc.close()
+   g16nc = None
+
+   # create meshgrid filled with radian angles
+   lat_rad,lon_rad = np.meshgrid(lat_rad_1d,lon_rad_1d)
+
+   # lat/lon calc routine from satellite radian angle vectors
+
+   lambda_0 = (lon_origin*np.pi)/180.0
+
+   a_var = np.power(np.sin(lat_rad),2.0) + (np.power(np.cos(lat_rad),2.0)*(np.power(np.cos(lon_rad),2.0)+(((r_eq*r_eq)/(r_pol*r_pol))*np.power(np.sin(lon_rad),2.0))))
+   b_var = -2.0*H*np.cos(lat_rad)*np.cos(lon_rad)
+   c_var = (H**2.0)-(r_eq**2.0)
+
+   r_s = (-1.0*b_var - np.sqrt((b_var**2)-(4.0*a_var*c_var)))/(2.0*a_var)
+
+   s_x = r_s*np.cos(lat_rad)*np.cos(lon_rad)
+   s_y = - r_s*np.sin(lat_rad)
+   s_z = r_s*np.cos(lat_rad)*np.sin(lon_rad)
+
+   lat = (180.0/np.pi)*(np.arctan(((r_eq*r_eq)/(r_pol*r_pol))*((s_z/np.sqrt(((H-s_x)*(H-s_x))+(s_y*s_y))))))
+   lon = (lambda_0 - np.arctan(s_y/(H-s_x)))*(180.0/np.pi)
+
+   # End timer
+   endTime = dt.datetime.utcnow()
+   time = (endTime - startTime).microseconds / (1000.0*1000.0)
+   print('took %f4.1 seconds to get GOES16 lat/lon'%(time))
+
+   return lon,lat # lat/lon are 2-d arrays
+
+# --
+def getGOESRetrivalData(goesFile,goesVar):
+
+   if not os.path.exists(goesFile):
+      print(goesFile+' not there. exit')
+      sys.exit()
+
+   # First get GOES lat/lon
+   goesLon2d, goesLat2d = getGOES16LatLon(goesFile) # 2-d arrays
+   goesLon = goesLon2d.flatten() # 1-d arrays
+   goesLat = goesLat2d.flatten()
+
+   # Now open the file and get the data we want
+   nc_goes = Dataset(goesFile, "r", format="NETCDF4")
+
+   # If the next line is true (it should be), this indicates the variable needs to be treated
+   #  as an "unsigned 16-bit integer". This is a pain.  So we must use the "astype" method
+   #  to change the variable type BEFORE applying scale_factor and add_offset.  After the conversion
+   #  we then can manually apply the scale factor and offset
+   #goesVar = 'PRES'
+   goesVar = goesVar.strip() # for safety
+   if nc_goes.variables[goesVar]._Unsigned.lower().strip()  == 'true':
+      nc_goes.set_auto_scale(False) # Don't automatically apply scale_factor and add_offset to variable
+      goesData2d = np.array( nc_goes.variables[goesVar]).astype(np.uint16)
+      goesData2d = goesData2d * nc_goes.variables[goesVar].scale_factor + nc_goes.variables[goesVar].add_offset
+      goesQC2d  = np.array( nc_goes.variables['DQF']).astype(np.uint8)
+   else:
+      goesData2d = np.array( nc_goes.variables[goesVar])
+      goesQC2d  = np.array( nc_goes.variables['DQF'])
+
+   # Make variables 1-d
+   goesQC  = goesQC2d.flatten()
+   goesData = goesData2d.flatten()
+   nc_goes.close()
+
+   # Get rid of NaNs; base it oon longitude
+   goesData = goesData[~np.isnan(goesLon)] # Handle data arrays first before changing lat/lon itself
+   goesQC  = goesQC[~np.isnan(goesLon)]
+   goesLon = goesLon[~np.isnan(goesLon)] # ~ is "logical not", also np.logical_not
+   goesLat = goesLat[~np.isnan(goesLat)]
+   if goesLon.shape != goesLat.shape:
+      print('GOES lat/lon shape mismatch')
+      sys.exit()
+
+   # If goesQC == 0, good QC and there was a cloud with a valid pressure.
+   # If goesQC == 4, no cloud; probably clear sky.
+   # All other QC means no data, and we want to remove those points
+   idx = np.logical_or( goesQC == 0, goesQC == 4) # Only keep QC == 0 or 4
+   goesLon = goesLon[idx]
+   goesLat = goesLat[idx]
+   goesData = goesData[idx]
+   goesQC  = goesQC[idx]
+
+   # Only QC with 0 or 4 are left; now set QC == 4 to missing to indicate clear sky
+   goesData = np.where( goesQC != 0, missing_values, goesData)
+
+   # Get longitude to between (0,360) for consistency with JEDI files (add check to JEDI files, too)
+   goesLon = np.where( goesLon < 0, goesLon + 360.0, goesLon )
+
+   print('Min GOES Lon = ',np.min(goesLon))
+   print('Max GOES Lon = ',np.max(goesLon))
+
+   return goesLon, goesLat, goesData
+
+def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
 
    # Static Variables for QC and obs
    qcVar  = 'brightness_temperature_'+str(channel)+'@EffectiveQC0' # QC variable
    obsVar = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
 
-   # Get list of files.  There is one file per processor
+   # Get GOES-16 retrieval file with auxiliary information
+   if 'abi' in satellite or 'ahi' in satellite:
+      goesLon, goesLat, goesData = getGOESRetrivalData(goesFile,'PRES')
+      lonlatGOES = np.array( zip(goesLon, goesLat)) # lon/lat pairs for each GOES ob (nobs_GOES, 2)
+      print('shape lonlatGOES = ',lonlatGOES.shape)
+      myGOESInterpolator = NearestNDInterpolator(lonlatGOES,goesData)
+
+   # Get list of OMB files to process.  There is one file per processor
    files = os.listdir(inputDir)
    inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
    inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
@@ -420,6 +544,7 @@ def point2point(source,inputDir,satellite,channel,dataSource):
 
    # Read the files and put data in array
    allData, allDataQC = [], []
+   allData, allDataQC = [], []
    for inputFile in inputFiles:
       nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
       print('Trying to read ',v,' from ',inputFile)
@@ -427,7 +552,7 @@ def point2point(source,inputDir,satellite,channel,dataSource):
       # Read forecast/obs data
       read_var = nc_fid.variables[v]         # extract/copy the data
    #  read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
-      this_var  = np.array( read_var )        # to numpy array
+      this_var = np.array( read_var )        # to numpy array
    #  this_var = np.where( this_var==read_missing, np.nan, this_var )
 
       if dataSource == 1: # If true, we read in OMB data
@@ -438,11 +563,19 @@ def point2point(source,inputDir,satellite,channel,dataSource):
       qcData = np.array(nc_fid.variables[qcVar])
 
       # Sanity check
-      if qcData.shape != this_var.shape: return -99999, -99999 # shapes should match.
+      if qcData.shape != this_var.shape:     return -99999, -99999 # shapes should match.
 
       if 'abi' in satellite or 'ahi' in satellite:
-         cldfraThresh = 20.0 # percent
-         obsCldfra = np.array( nc_fid.variables['cloud_area_fraction@MetaData'] )*100.0 # Get into %...observed cloud fraction (AHI/ABI only)
+
+         # Get the GOES-16 retrieval data at the observation locations in this file
+         #   Values < 0 mean clear sky if pressure
+	 lats = np.array(nc_fid.variables['latitude@MetaData'])
+	 lons = np.array(nc_fid.variables['longitude@MetaData'])
+	 lonlat = np.array( zip(lons,lats))   # lat/lon pairs for each ob (nobs, 2)
+         thisGOESData = myGOESInterpolator(lonlat) # GOES data at obs locations in this file. If pressure, units are hPa
+         thisGOESData = thisGOESData * 100.0 # get into Pa
+
+         #obsCldfra = np.array( nc_fid.variables['cloud_area_fraction@MetaData'] )*100.0 # Get into %...observed cloud fraction (AHI/ABI only)
 
          geoValsFile = inputFile.replace('obsout','geoval')
          if not os.path.exists(geoValsFile):
@@ -452,31 +585,38 @@ def point2point(source,inputDir,satellite,channel,dataSource):
          nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
          fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
          pressure   = np.array( nc_fid2.variables['air_pressure']) # Pa
-         low,mid,high,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high/total cloud fractions
+         fcstLow,fcstMid,fcstHigh,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high/total forecast cloud fractions for each ob
          nc_fid2.close()
 
 	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
-         condition = 'any'
+         condition = 'cloudyOnly'
          yes = 2.0
          no  = 0.0
-         if qcData.shape == obsCldfra.shape == fcstTotCldFra.shape:  # these should all match
+         cldfraThresh = 20.0 # percent
+         if qcData.shape == fcstTotCldFra.shape == thisGOESData.shape:  # these should all match
             print('Checking F/O correspondence for ABI/AHI')
-            if   condition.lower().strip() == 'clearOnly'.lower():
-               qcData = np.where( (fcstTotCldFra < cldfraThresh) & (obsCldfra < cldfraThresh), qcData, missing_values) # clear in both F and O
-            elif condition.lower().strip() == 'cloudyOnly'.lower():
-               qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (obsCldfra >= cldfraThresh), qcData, missing_values) # cloudy in both F and O
+            if   condition.lower().strip() == 'clearOnly'.lower(): # clear in both forecast and obs
+              #qcData = np.where( (fcstTotCldFra < cldfraThresh) & (obsCldfra < cldfraThresh), qcData, missing_values)
+               qcData = np.where( (fcstTotCldFra < cldfraThresh) & (thisGOESData <= 0.0), qcData, missing_values)
+            elif condition.lower().strip() == 'cloudyOnly'.lower(): # cloudy in both forecast and obs
+              #qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (obsCldfra >= cldfraThresh), qcData, missing_values)
+               qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (thisGOESData > 0.0), qcData, missing_values)
             elif condition.lower().strip() == 'cloudEventLow'.lower():
-               if dataSource == 1: this_var = np.where( low           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 1: this_var = np.where( fcstLow       > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 2: this_var = np.where( thisGOESData >= PTOP_LOW, yes, no )
             elif condition.lower().strip() == 'cloudEventMid'.lower():
-               if dataSource == 1: this_var = np.where( mid           > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 1: this_var = np.where( fcstMid       > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no )
+               if dataSource == 2: this_var = np.where( (thisGOESData <  PTOP_LOW) & (thisGOESData >= PTOP_MID), yes, no )
             elif condition.lower().strip() == 'cloudEventHigh'.lower():
-               if dataSource == 1: this_var = np.where( high          > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 1: this_var = np.where( fcstHigh      > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
+              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 2: this_var = np.where( (thisGOESData <  PTOP_MID) & (thisGOESData >= PTOP_HIGH), yes, no )
             elif condition.lower().strip() == 'cloudEventTot'.lower():
                if dataSource == 1: this_var = np.where( fcstTotCldFra > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-               if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 2: this_var = np.where( thisGOESData  > 0.0, yes, no ) 
 
             print('number removed = ', (qcData==missing_values).sum())
            #print('number passed   = ', qcData.shape[0] - (qcData==missing_values).sum())
