@@ -64,13 +64,13 @@ fcst = {
 //        cat_thresh = [ >=100, >=50 ];
 
           // Use this if doing python embedding
-//        name       = "python_script_fcst.py";
+          name       = "python_script_fcst.py";
 
           // Use this if reading from temporary GRIB2 file
 	  // created by running python code
           //name       = "APCP"
-	  name       = "${metConfName}";
-          level      = [ "R01" ];
+//          name       = "${metConfName}";
+//          level      = [ "R01" ];
 
         //cat_thresh = ${thresholds};
 	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0 ];
@@ -247,6 +247,7 @@ grid_weight_flag = NONE;
 rank_corr_flag   = FALSE;
 tmp_dir          = "/tmp";
 output_prefix    = "${MODEL}_F${FCST_TIME}_${VX_VAR}_NBR";
-version          = "V8.1";
+version          = "V9.0";
+//version          = "V8.1";
 
 ////////////////////////////////////////////////////////////////////////////////

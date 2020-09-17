@@ -24,16 +24,22 @@ PTOP_LOW  = 64200. # low for > 64200 Pa
 PTOP_MID  = 35000. # mid between 35000-64200 Pa
 PTOP_HIGH = 15000. # high between 15000-35000 Pa
 
+# Values for 4 x 4 contingency table
+Na, Nb, Nc, Nd = 1, 2, 3, 4 
+Ne, Nf, Ng, Nh = 5, 6, 7, 8 
+Ni, Nj, Nk, Nl = 9, 10, 11, 12
+Nm, Nn, No, Np = 13, 14, 15, 16
+
 #entry for 'point' is for point-to-point comparison and is all dummy data (except for gridType) that is overwritten by point2point
 griddedDatasets =  {
-   'MERRA2'   : { 'gridType':'LatLon', 'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, },
-   'SATCORPS' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, },
-   'ERA5'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280], 'flipY':False, },
-   'GFS'      : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, },
-   'GALWEM'   : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':True, },
-   'GALWEM17' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, },
-   'WWMCA'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, },
-   'point'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[0.0,921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, },
+   'MERRA2'   : { 'gridType':'LatLon', 'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, 'ftype':'nc'},
+   'SATCORPS' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, 'ftype':'nc' },
+   'ERA5'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280], 'flipY':False, 'ftype':'nc' },
+   'GFS'      : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'grib'},
+   'GALWEM'   : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':True, 'ftype':'grib'},
+   'GALWEM17' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536], 'flipY':False, 'ftype':'grib'},
+   'WWMCA'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'grib'},
+   'point'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, 'ftype':'nc'},
 }
    #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
    #'ERA5'     : { 'gridType':'Gaussian', 'nx':1280, 'ny':640, 'lon_zero':0, 'latVar':'latitude', 'lonVar':'longitude', 'flipY':False, },
@@ -349,7 +355,7 @@ def getDataArray(inputFile,source,variable,dataSource):
    # This is a hack, because right now, MET python embedding doesn't work with pygrib,
    #    so output the data to a temporary file, and then have MET read the temporary grib file.
    # Starting with version 9.0 of MET, the hack isn't needed, and MET python embedding works with pygrib
-   outputFcstFile = True  # MUST be True for MET version < 9.0.  For MET 9.0+, optional
+   outputFcstFile = False  # MUST be True for MET version < 9.0.  For MET 9.0+, optional
    if dataSource == 1: 
       if outputFcstFile:
          grbtmp = x
@@ -527,7 +533,7 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
    # Get GOES-16 retrieval file with auxiliary information
    if 'abi' in satellite or 'ahi' in satellite:
       goesLon, goesLat, goesData = getGOESRetrivalData(goesFile,'PRES')
-      lonlatGOES = np.array( zip(goesLon, goesLat)) # lon/lat pairs for each GOES ob (nobs_GOES, 2)
+      lonlatGOES = np.array( list(zip(goesLon, goesLat))) # lon/lat pairs for each GOES ob (nobs_GOES, 2)
       print('shape lonlatGOES = ',lonlatGOES.shape)
       myGOESInterpolator = NearestNDInterpolator(lonlatGOES,goesData)
 
@@ -555,23 +561,23 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
       this_var = np.array( read_var )        # to numpy array
    #  this_var = np.where( this_var==read_missing, np.nan, this_var )
 
-      if dataSource == 1: # If true, we read in OMB data
+      if dataSource == 1: # If true, we just read in OMB data, but we want B
          obsData = np.array( nc_fid.variables[obsVar])
          this_var = obsData - this_var # get background/forecast value (O - OMB = B)
 
       #Read QC data
       qcData = np.array(nc_fid.variables[qcVar])
 
-      # Sanity check
-      if qcData.shape != this_var.shape:     return -99999, -99999 # shapes should match.
+      # Sanity check...shapes should match
+      if qcData.shape != this_var.shape: return -99999, -99999
 
       if 'abi' in satellite or 'ahi' in satellite:
 
          # Get the GOES-16 retrieval data at the observation locations in this file
-         #   Values < 0 mean clear sky if pressure
-	 lats = np.array(nc_fid.variables['latitude@MetaData'])
-	 lons = np.array(nc_fid.variables['longitude@MetaData'])
-	 lonlat = np.array( zip(lons,lats))   # lat/lon pairs for each ob (nobs, 2)
+         #   Values < 0 mean clear sky
+         lats = np.array(nc_fid.variables['latitude@MetaData'])
+         lons = np.array(nc_fid.variables['longitude@MetaData'])
+         lonlat = np.array( list(zip(lons,lats)))  # lat/lon pairs for each ob (nobs, 2)
          thisGOESData = myGOESInterpolator(lonlat) # GOES data at obs locations in this file. If pressure, units are hPa
          thisGOESData = thisGOESData * 100.0 # get into Pa
 
@@ -596,28 +602,26 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
          if qcData.shape == fcstTotCldFra.shape == thisGOESData.shape:  # these should all match
             print('Checking F/O correspondence for ABI/AHI')
             if   condition.lower().strip() == 'clearOnly'.lower(): # clear in both forecast and obs
-              #qcData = np.where( (fcstTotCldFra < cldfraThresh) & (obsCldfra < cldfraThresh), qcData, missing_values)
                qcData = np.where( (fcstTotCldFra < cldfraThresh) & (thisGOESData <= 0.0), qcData, missing_values)
             elif condition.lower().strip() == 'cloudyOnly'.lower(): # cloudy in both forecast and obs
-              #qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (obsCldfra >= cldfraThresh), qcData, missing_values)
                qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (thisGOESData > 0.0), qcData, missing_values)
             elif condition.lower().strip() == 'cloudEventLow'.lower():
-               if dataSource == 1: this_var = np.where( fcstLow       > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 1: this_var = np.where( fcstLow      >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( thisGOESData >= PTOP_LOW, yes, no )
             elif condition.lower().strip() == 'cloudEventMid'.lower():
-               if dataSource == 1: this_var = np.where( fcstMid       > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no )
+               if dataSource == 1: this_var = np.where( fcstMid      >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( (thisGOESData <  PTOP_LOW) & (thisGOESData >= PTOP_MID), yes, no )
             elif condition.lower().strip() == 'cloudEventHigh'.lower():
-               if dataSource == 1: this_var = np.where( fcstHigh      > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 1: this_var = np.where( fcstHigh     >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( (thisGOESData <  PTOP_MID) & (thisGOESData >= PTOP_HIGH), yes, no )
             elif condition.lower().strip() == 'cloudEventTot'.lower():
-               if dataSource == 1: this_var = np.where( fcstTotCldFra > cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
-              #if dataSource == 2: this_var = np.where( obsCldfra     > cldfraThresh, yes, no ) 
+               if dataSource == 1: this_var = np.where( fcstTotCldFra >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( thisGOESData  > 0.0, yes, no ) 
-
+            #elif condition.lower().strip() == '4x4table'.lower():
+              #if dataSource == 1:
+	      #   this_var = np.where( fcstLow >= cldfraThresh, yesLow, no )
+	      #   this_var = this_var + np.where( fcstMid >= cldfraThresh, yesMid, no )
+	      #   this_var = this_var + np.where( fcstHigh >= cldfraThresh, yesHigh, no )
             print('number removed = ', (qcData==missing_values).sum())
            #print('number passed   = ', qcData.shape[0] - (qcData==missing_values).sum())
          else:
@@ -655,7 +659,7 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
    # Make a fake lat/lon grid going from 0.0 to 50.0 degrees, with the interval determined by number of points
    griddedDatasets[source]['latDef'][0] = 0.0 # starting point
    griddedDatasets[source]['latDef'][1] = np.diff(np.linspace(0,50,l)).round(6)[0] # interval (degrees)
-   griddedDatasets[source]['latDef'][2] = l # number of points
+   griddedDatasets[source]['latDef'][2] = int(l) # number of points
    griddedDatasets[source]['lonDef'][0:3] = griddedDatasets[source]['latDef']
 
    gridInfo = getGridInfo(source, griddedDatasets[source]['gridType']) # 'LatLon' gridType

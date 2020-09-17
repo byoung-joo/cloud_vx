@@ -62,10 +62,10 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 ####
 
 # Vars used for manual testing of the script
-export START_TIME=2017060500 #2018110100
-export FCST_TIME_LIST="06 09" # 6 9 12 24 36 48"
-export VX_OBS_LIST="SATCORPS MERRA2 ERA5" #ERA5" # WWMCA
-export VX_VAR_LIST="binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
+export START_TIME=2020083100 #2017060500 #2018110100
+export FCST_TIME_LIST="00 06 12 18 24 30 36 42 48" #"06 09" # 6 9 12 24 36 48"
+export VX_OBS_LIST="WWMCA" #"SATCORPS MERRA2 ERA5" #ERA5" # WWMCA
+export VX_VAR_LIST="totalCloudFrac" #"binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
 #export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
@@ -73,7 +73,7 @@ export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
-export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM
+export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017)
 export RAW_OBS=/glade/scratch/schwartz/OBS
 export MODEL="GALWEM" # Options are "GFS", "GALWEM17", or "GALWEM"
 
@@ -330,7 +330,7 @@ EOF
 	      rm -f ./temp_fcst.grb2
 	     #python $scriptName # Will create temp_fcst.grb2
 	     #FCST_FILE=./temp_fcst.grb2
-	      FCST_FILE=PYTHON_NUMPY
+	      FCST_FILE=PYTHON_NUMPY # For MetV9.0, MET can handle pygrib.
 	   fi;
 
         done # loop over i=1,2, once for forecast, another for obs

@@ -64,14 +64,15 @@ fcst = {
 //        cat_thresh = [ >=100, >=50 ];
 
           // Use this if doing python embedding
-//        name       = "python_script_fcst.py";
+          name       = "python_script_fcst.py";
+	  prob	     = TRUE;
 
           // Use this if reading from temporary GRIB2 file
 	  // created by running python code
 //          name       = "TCDC";
-	  name       = "${metConfName}";
-          level      = [ "R01" ];
-	  prob	     = TRUE;
+//	  name       = "${metConfName}";
+//        level      = [ "R01" ];
+//	  prob	     = TRUE;
 
         //cat_thresh = ${thresholds};
 
@@ -254,6 +255,7 @@ grid_weight_flag = NONE;
 rank_corr_flag   = FALSE;
 tmp_dir          = "/tmp";
 output_prefix    = "${MODEL}_F${FCST_TIME}_${VX_VAR}_PROB";
-version          = "V8.1";
+version          = "V9.0";
+//version          = "V8.1";
 
 ////////////////////////////////////////////////////////////////////////////////
