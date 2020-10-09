@@ -64,7 +64,7 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 # Vars used for manual testing of the script
 export START_TIME=2020083100 #2017060500 #2018110100
 export FCST_TIME_LIST="00 06 12 18 24 30 36 42 48" #"06 09" # 6 9 12 24 36 48"
-export VX_OBS_LIST="WWMCA" #"SATCORPS MERRA2 ERA5" #ERA5" # WWMCA
+export VX_OBS_LIST="SATCORPS" #"WWMCA" #"SATCORPS MERRA2 ERA5" #ERA5" # WWMCA
 export VX_VAR_LIST="totalCloudFrac" #"binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
@@ -73,9 +73,9 @@ export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
-export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017)
+export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017), "GALWEM" is 0.25 degree from Air Force in 2020-2021
 export RAW_OBS=/glade/scratch/schwartz/OBS
-export MODEL="GALWEM" # Options are "GFS", "GALWEM17", or "GALWEM"
+export MODEL="GALWEM" # Options are "GFS", "MPAS", "GALWEM17", or "GALWEM". Also, set to "WWMCA" if you want to treat WWMCA as forecast, and, say, SATCORPS as obs.
 
 # Print run parameters
 ${ECHO}
@@ -245,6 +245,8 @@ for DOMAIN in ${DOMAIN_LIST}; do
 	    FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
 	elif [ ${MODEL} == "GALWEM" ]; then
 	    FCST_FILE=${FCST_DIR}/${START_TIME}/PS.557WW_SC.U_DI.C_DC.GRID_GP.GALWEM-GD_SP.COMPLEX_GR.C0P25DEG_AR.GLOBAL_PA.NCAR_DD.${YYYYMMDD}_CY.${HH}_FH.${FCST_HRS}_DF.GR2
+        elif  [ ${MODEL} == "WWMCA" ]; then # Let's treat WWMCA as the model to compare to SATCORPS!
+            FCST_FILE=${RAW_OBS}/${MODEL}/WWMCA_${VDATE}00_ECE15_M.GR1
 	else
             ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
             exit 1
@@ -260,6 +262,10 @@ for DOMAIN in ${DOMAIN_LIST}; do
         if [ ${VX_OBS} == "SATCORPS" ]; then
            JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
            OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+	   # Format changed in 2020, if above not there, try a different format
+	   if [ ! -e ${OBS_FILE} ]; then
+              OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+	   fi
 	  #OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
         elif  [ ${VX_OBS} == "MERRA2" ]; then
           TMP=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} +30min`  #TODO: 30 min offset

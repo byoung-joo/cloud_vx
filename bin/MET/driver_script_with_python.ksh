@@ -73,9 +73,9 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 #export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config #CSS
 #export DATAROOT=/glade/scratch/`whoami`/cloud_vx # CSS
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg #GFS
-#export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM
+#export FCST_DIR=/glade/scratch/schwartz/GALWEM   # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017), "GALWEM" is 0.25 degree from Air Force in 2020-2021
 #export RAW_OBS=/glade/scratch/schwartz/OBS
-#export MODEL="GALWEM" # Options are "GFS", "GALWEM17", or "GALWEM"
+#export MODEL="GALWEM" # Options are "GFS", "MPAS", "GALWEM17", or "GALWEM"
 
 # Print run parameters
 ${ECHO}
@@ -260,6 +260,10 @@ for DOMAIN in ${DOMAIN_LIST}; do
         if [ ${VX_OBS} == "SATCORPS" ]; then
            JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
            OBS_FILE=${RAW_OBS}/${VX_OBS}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+	   # Format changed in 2020, if above not there, try a different format
+	   if [ ! -e ${OBS_FILE} ]; then
+              OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
+	   fi
 	  #OBS_FILE=${RAW_OBS}/${VX_OBS}/GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
         elif  [ ${VX_OBS} == "MERRA2" ]; then
           TMP=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} +30min`  #TODO: 30 min offset
@@ -330,7 +334,7 @@ EOF
 	      rm -f ./temp_fcst.grb2
 	     #python $scriptName # Will create temp_fcst.grb2
 	     #FCST_FILE=./temp_fcst.grb2
-	      FCST_FILE=PYTHON_NUMPY
+	      FCST_FILE=PYTHON_NUMPY # For MetV9.0, MET can handle pygrib.
 	   fi;
 
         done # loop over i=1,2, once for forecast, another for obs

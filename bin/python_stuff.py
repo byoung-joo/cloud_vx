@@ -62,35 +62,36 @@ highCloudFrac_GFS =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstF
 totalCloudFrac_WWMCA  = { 'parameterName':71, 'typeOfLevel':'entireAtmosphere' }
 
 verifVariablesModel = {
-    'binaryCloud'    :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM] },
-    'totalCloudFrac' :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM] },
-    'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM17':[lowCloudFrac_GALWEM], 'GALWEM':[lowCloudFrac_GALWEM] },
-    'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM17':[midCloudFrac_GALWEM], 'GALWEM':[midCloudFrac_GALWEM] },
-    'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM17':[highCloudFrac_GALWEM], 'GALWEM':[highCloudFrac_GALWEM] },
-    'cloudTopHeight' :  {'GFS':['']               , 'GALWEM17':[cloudTopHeight_GALWEM], 'GALWEM':[cloudTopHeight_GALWEM] },
-    'cloudBaseHeight' : {'GFS':['']               , 'GALWEM17':[cloudBaseHeight_GALWEM], 'GALWEM':[cloudBaseHeight_GALWEM] },
+    'binaryCloud'    :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UKMO_rand']},
+    'totalCloudFrac' :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UKMO_rand']},
+    'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM17':[lowCloudFrac_GALWEM], 'GALWEM':[lowCloudFrac_GALWEM], 'MPAS':['cldfrac_low_UKMO']},
+    'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM17':[midCloudFrac_GALWEM], 'GALWEM':[midCloudFrac_GALWEM], 'MPAS':['cldfrac_mid_UKMO']},
+    'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM17':[highCloudFrac_GALWEM], 'GALWEM':[highCloudFrac_GALWEM], 'MPAS':['cldfrac_high_UKMO']},
+    'cloudTopHeight' :  {'GFS':['']               , 'GALWEM17':[cloudTopHeight_GALWEM], 'GALWEM':[cloudTopHeight_GALWEM], 'MPAS':['cldht_top_UKMO']},
+    'cloudBaseHeight' : {'GFS':['']               , 'GALWEM17':[cloudBaseHeight_GALWEM], 'GALWEM':[cloudBaseHeight_GALWEM], 'MPAS':['cldht_base_UKMO']},
 }
 
 cloudFracCatThresholds = '>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0' # MET format string
 verifVariables = {
    'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
-   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'MPAS':['cldfrac_tot_UKMO_rand'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
-   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'MPAS':['cldfrac_low_UKMO'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
-   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'MPAS':['cldfrac_mid_UKMO'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
-   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'MPAS':['cldfrac_high_UKMO'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
    'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'units':'K',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'units':'hPa', 'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'MPAS':['cldht_top_UKMO'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
-   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'MPAS':['cldht_base_UKMO'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
 }
 
 # Combine the two dictionaries
-#for key in verifVariablesModel.keys():
-#  x = verifVariablesModel[key]
-#  for key1 in x.keys():
-#     verifVariables[key][key1] = x[key1]
+# Only reason verifVariablesModel exists is just for space--verifVaribles gets too long if we keep adding more datasets
+for key in verifVariablesModel.keys():
+  x = verifVariablesModel[key]
+  for key1 in x.keys():
+     verifVariables[key][key1] = x[key1]
 
 #f = '/glade/u/home/schwartz/cloud_verification/GFS_grib_0.25deg/2018112412/gfs.0p25.2018112412.f006.grib2'
 #grbs = pygrib.open(f)
@@ -243,20 +244,22 @@ def getDataArray(inputFile,source,variable,dataSource):
 
    print('dataSource = ',dataSource)
 
-   if dataSource == 1:  # dataSource == 1 means forecast
-      varsToRead = verifVariablesModel[variable][source] # returns a list whose ith element is a dictionary
-     #grbs = pygrib.open(inputFile)
-      idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
-     #grbs.close()
+   ftype = griddedDatasets[source]['ftype'].lower().strip()
 
-   if dataSource == 2:  # dataSource == 2 means obs
-      varsToRead = verifVariables[variable][source] # returns a list
+   # Get file handle
+   if ftype == 'nc':
+      nc_fid = Dataset(inputFile, "r", format="NETCDF4")
+      #nc_fid.set_auto_scale(True)
+   elif ftype == 'grib':
       if source == 'WWMCA':
-         idx2 = pygrib.index(inputFile,'parameterName','typeOfLevel')
+         idx = pygrib.index(inputFile,'parameterName','typeOfLevel')
       else:
-         # Open the file
-         nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
-         #nc_fid.set_auto_scale(True)
+         idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
+
+   # dataSource == 1 means forecast, 2 means obs
+#  if dataSource == 1: varsToRead = verifVariablesModel[variable][source] # if ftype == 'grib', returns a list whose ith element is a dictionary. otherwise, just a list
+#  if dataSource == 2: varsToRead = verifVariables[variable][source] # returns a list
+   varsToRead = verifVariables[variable][source] # if ftype == 'grib', returns a list whose ith element is a dictionary. otherwise, just a list
 
    print('Trying to read ',inputFile)
 
@@ -280,40 +283,37 @@ def getDataArray(inputFile,source,variable,dataSource):
    # get data
    data = []
    for v in varsToRead:
-      if dataSource == 1:  # dataSource == 1 means forecast
-         # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
-         if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight' and source == 'GALWEM17': 
-            x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
+      if ftype == 'grib':
+         if source == 'WWMCA':
+            x = idx(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'])[0] # by getting element 0, you get a pygrib message
          else:
-            x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
-	 
-         if x.shortName != v['shortName']: print('Name mismatch!')
+            # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
+            if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight' and source == 'GALWEM17': 
+               x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
+            else:
+               x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+            if x.shortName != v['shortName']: print('Name mismatch!')
+            print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
          read_var = x.values # same x.data()[0]
          read_missing = x.missingValue
-         print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
-         
-	 # The missing value (read_missing) for GALWEM17 and GALWEM cloud base/height is 9999, which is not the best choice because
-	 # those could be actual values. So we need to use the masked array part (below) to handle which
-	 # values are missing.  We also set read_missing to something unphysical to essentially disable it.
-	 # Finally, if we don't change the 'missingValue' property in the GRIB2 file we are eventually outputting,
-	 # the bitmap will get all messed up, because it will be based on 9999 instead of $missing_values
+
+         # The missing value (read_missing) for GALWEM17 and GALWEM cloud base/height is 9999, which is not the best choice because
+         # those could be actual values. So we need to use the masked array part (below) to handle which
+         # values are missing.  We also set read_missing to something unphysical to essentially disable it.
+         # Finally, if we don't change the 'missingValue' property in the GRIB2 file we are eventually outputting,
+         # the bitmap will get all messed up, because it will be based on 9999 instead of $missing_values
          if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight':
             read_missing = -9999.
             x['missingValue'] = read_missing
             if source == 'GALWEM17':
-	       #These are masked numpy arrays, with mask = True where there is a missing value (no cloud)
-	       #Use np.ma.filled to create an ndarray where mask = True values are set to np.nan
-               read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
+               #These are masked numpy arrays, with mask = True where there is a missing value (no cloud)
+               #Use np.ma.filled to create an ndarray where mask = True values are set to np.nan
+             read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
+      elif ftype == 'nc':
+         read_var = nc_fid.variables[v]         # extract/copy the data
+         read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
 
-      if dataSource == 2:  # dataSource == 2 means obs
-         if source == 'WWMCA':
-            x = idx2(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'])[0] # by getting element 0, you get a pygrib message
-            read_var = x.values # same x.data()[0]
-            read_missing = x.missingValue
-         else:
-            read_var = nc_fid.variables[v]         # extract/copy the data
-            read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
-         print('Reading ', v)
+      print('Reading ', v)
 
       this_var = np.array( read_var )        # to numpy array
      #print(read_missing, np.nan)
@@ -365,7 +365,7 @@ def getDataArray(inputFile,source,variable,dataSource):
    #    so output the data to a temporary file, and then have MET read the temporary grib file.
    # Starting with version 9.0 of MET, the hack isn't needed, and MET python embedding works with pygrib
    outputFcstFile = False  # MUST be True for MET version < 9.0.  For MET 9.0+, optional
-   if dataSource == 1: 
+   if dataSource == 1 and ftype == 'grib': 
       if outputFcstFile:
          grbtmp = x
          grbtmp['values']=met_data
@@ -375,10 +375,8 @@ def getDataArray(inputFile,source,variable,dataSource):
          print('Successfully output temp_fcst.grb2')
 
    # Close files
-   if dataSource == 1: idx.close()    # Close the input GRIB file
-   if dataSource == 2:
-      if source == 'WWMCA': idx2.close()
-      else: nc_fid.close() # Close the netCDF file
+   if ftype == 'grib': idx.close()    # Close the input GRIB file
+   if ftype == 'nc':   nc_fid.close() # Close the netCDF file
 
    return met_data
 
