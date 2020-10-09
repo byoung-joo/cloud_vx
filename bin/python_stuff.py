@@ -39,6 +39,7 @@ griddedDatasets =  {
    'GALWEM'   : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':True, 'ftype':'grib'},
    'GALWEM17' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536], 'flipY':False, 'ftype':'grib'},
    'WWMCA'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'grib'},
+   'MPAS'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[90.0,0.50,361],  'lonVar':'longitude',  'lonDef':[0.0,0.50,720],   'flipY':False, 'ftype':'nc'},
    'point'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, 'ftype':'nc'},
 }
    #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
@@ -73,14 +74,14 @@ verifVariablesModel = {
 cloudFracCatThresholds = '>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0' # MET format string
 verifVariables = {
    'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
-   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
-   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
-   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
-   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'MPAS':['cldfrac_tot_UKMO_rand'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'MPAS':['cldfrac_low_UKMO'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'MPAS':['cldfrac_mid_UKMO'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'MPAS':['cldfrac_high_UKMO'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
    'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'units':'K',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'units':'hPa', 'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
-   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'MPAS':['cldht_top_UKMO'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'MPAS':['cldht_base_UKMO'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
 }
@@ -127,6 +128,8 @@ def getTotalCloudFrac(source,data):
       print(x.min(), x.max())
    elif source == 'ERA5':
       x = data[0][0,0,:,:] * 100.0
+   elif source == 'MPAS':
+      x = data[0][0,:,:] * 100.0
    else:
       x = data[0]
 
@@ -153,6 +156,8 @@ def getLayerCloudFrac(source,data,layer):
       x = data[0][0,:,:] * 100.0
    elif source == 'ERA5':
       x = data[0][0,0,:,:] * 100.0
+   elif source == 'MPAS':
+      x = data[0][0,:,:] * 100.0
    else:
       x = data[0]
 
@@ -189,6 +194,8 @@ def getCloudTopHeight(source,data):
       x = data[0][0,0,:,:]   #TBD
    elif source == 'GALWEM17':
       x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
+   elif source == 'MPAS':
+      x = data[0][0,:,:] # already in meters
    else:
       x = data[0]
    return x
@@ -202,6 +209,8 @@ def getCloudBaseHeight(source,data):
       x = data[0][0,0,:,:]
    elif source == 'GALWEM17':
       x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
+   elif source == 'MPAS':
+      x = data[0][0,:,:] # already in meters
    else:
       x = data[0]
    return x
