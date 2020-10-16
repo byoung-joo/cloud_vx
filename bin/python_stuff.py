@@ -59,7 +59,19 @@ midCloudFrac_GFS  =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstF
 highCloudFrac_GFS =  { 'parameterCategory':6, 'parameterNumber':1, 'typeOfFirstFixedSurface':234, 'shortName':'tcc' }
 
 #WWMCA
-totalCloudFrac_WWMCA  = { 'parameterName':71, 'typeOfLevel':'entireAtmosphere' }
+totalCloudFrac_WWMCA  = { 'parameterName':71, 'typeOfLevel':'entireAtmosphere', 'level':0 }
+
+cloudTopHeightLev1_WWMCA  = { 'parameterName':228, 'typeOfLevel':'hybrid', 'level':1 }
+cloudTopHeightLev2_WWMCA  = { 'parameterName':228, 'typeOfLevel':'hybrid', 'level':2 }
+cloudTopHeightLev3_WWMCA  = { 'parameterName':228, 'typeOfLevel':'hybrid', 'level':3 }
+cloudTopHeightLev4_WWMCA  = { 'parameterName':228, 'typeOfLevel':'hybrid', 'level':4 }
+cloudTopHeight_WWMCA      = [ cloudTopHeightLev1_WWMCA, cloudTopHeightLev2_WWMCA, cloudTopHeightLev3_WWMCA, cloudTopHeightLev4_WWMCA ]
+
+cloudBaseHeightLev1_WWMCA  = { 'parameterName':227, 'typeOfLevel':'hybrid', 'level':1 }
+cloudBaseHeightLev2_WWMCA  = { 'parameterName':227, 'typeOfLevel':'hybrid', 'level':2 }
+cloudBaseHeightLev3_WWMCA  = { 'parameterName':227, 'typeOfLevel':'hybrid', 'level':3 }
+cloudBaseHeightLev4_WWMCA  = { 'parameterName':227, 'typeOfLevel':'hybrid', 'level':4 }
+cloudBaseHeight_WWMCA      = [ cloudBaseHeightLev1_WWMCA, cloudBaseHeightLev2_WWMCA, cloudBaseHeightLev3_WWMCA, cloudBaseHeightLev4_WWMCA ]
 
 verifVariablesModel = {
     'binaryCloud'    :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UKMO_rand']},
@@ -80,8 +92,8 @@ verifVariables = {
    'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
    'cloudTopTemp'   : { 'MERRA2':['CLDTMP'], 'SATCORPS':['cloud_temperature_top_level'], 'ERA5':['']   , 'units':'K',   'thresholds':'NA', 'interpMethod':'bilin'},
    'cloudTopPres'   : { 'MERRA2':['CLDPRS'], 'SATCORPS':['cloud_pressure_top_level'],    'ERA5':['']   , 'units':'hPa', 'thresholds':'NA', 'interpMethod':'bilin'},
-   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
-   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'WWMCA':cloudTopHeight_WWMCA,  'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
+   'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'WWMCA':cloudBaseHeight_WWMCA, 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
    'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
 }
@@ -197,9 +209,21 @@ def getCloudTopHeight(source,data):
       x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
    elif source == 'MPAS':
       x = data[0][0,:,:] # already in meters
+   elif source == 'WWMCA':
+      # data is a list (should be length 4)
+      if len(data) != 4:
+         print('error with WWMCA Cloud top height')
+         sys.exit()
+      tmp = np.array(data) # already in meters
+      tmp = np.where( tmp <= 0, np.nan, tmp) # replace 0 or negative values with NAN
+      x = np.nanmax(tmp,axis=0) # get maximum cloud top height across all layers
    else:
       x = data[0]
-   return x
+
+   # Eliminate unphysical values (assume cloud top shouldn't be > 50000 meters)
+   y = np.where( x > 50000.0 , np.nan, x )
+
+   return y
 
 def getCloudBaseHeight(source,data):
    if source == 'SATCORPS':
@@ -212,9 +236,21 @@ def getCloudBaseHeight(source,data):
       x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
    elif source == 'MPAS':
       x = data[0][0,:,:] # already in meters
+   elif source == 'WWMCA':
+      # data is a list (should be length 4)
+      if len(data) != 4:
+         print('error with WWMCA Cloud base height')
+         sys.exit()
+      tmp = np.array(data) # already in meters
+      tmp = np.where( tmp <= 0, np.nan, tmp) # replace 0 or negative values with NAN
+      x = np.nanmin(tmp,axis=0) # get lowest cloud base over all layers
    else:
       x = data[0]
-   return x
+
+   # Eliminate unphysical values (assume cloud base shouldn't be > 50000 meters)
+   y = np.where( x > 50000.0 , np.nan, x )
+
+   return y
 
 def getCloudCeiling(source,data):
    if source == 'SATCORPS':
@@ -252,7 +288,7 @@ def getDataArray(inputFile,source,variable,dataSource):
       #nc_fid.set_auto_scale(True)
    elif ftype == 'grib':
       if source == 'WWMCA':
-         idx = pygrib.index(inputFile,'parameterName','typeOfLevel')
+         idx = pygrib.index(inputFile,'parameterName','typeOfLevel','level')
       else:
          idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
 
@@ -285,17 +321,19 @@ def getDataArray(inputFile,source,variable,dataSource):
    for v in varsToRead:
       if ftype == 'grib':
          if source == 'WWMCA':
-            x = idx(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'])[0] # by getting element 0, you get a pygrib message
+            x = idx(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'],level=v['level'])[0] # by getting element 0, you get a pygrib message
          else:
             # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
-            if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight' and source == 'GALWEM17': 
-               x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
-            else:
-               x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+            if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight':
+               if source == 'GALWEM17': 
+                  x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
+               else:
+                  x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
             if x.shortName != v['shortName']: print('Name mismatch!')
             print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
          read_var = x.values # same x.data()[0]
          read_missing = x.missingValue
+         print('missing value = ',read_missing)
 
          # The missing value (read_missing) for GALWEM17 and GALWEM cloud base/height is 9999, which is not the best choice because
          # those could be actual values. So we need to use the masked array part (below) to handle which
@@ -308,7 +346,7 @@ def getDataArray(inputFile,source,variable,dataSource):
             if source == 'GALWEM17':
                #These are masked numpy arrays, with mask = True where there is a missing value (no cloud)
                #Use np.ma.filled to create an ndarray where mask = True values are set to np.nan
-             read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
+               read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
       elif ftype == 'nc':
          read_var = nc_fid.variables[v]         # extract/copy the data
          read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
