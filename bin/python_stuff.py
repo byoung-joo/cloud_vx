@@ -31,15 +31,17 @@ Ni, Nj, Nk, Nl = 9, 10, 11, 12
 Nm, Nn, No, Np = 13, 14, 15, 16
 
 #entry for 'point' is for point-to-point comparison and is all dummy data (except for gridType) that is overwritten by point2point
+# ERA5 on NCAR CISL RDA changed at some point.  Old is ERA5_2017 (not used anymore), new is ERA5, which we'll use for 2020 data
 griddedDatasets =  {
    'MERRA2'   : { 'gridType':'LatLon', 'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, 'ftype':'nc'},
    'SATCORPS' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, 'ftype':'nc' },
-   'ERA5'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280], 'flipY':False, 'ftype':'nc' },
+   'ERA5_2017': { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.7848769072,0.281016829130516,640], 'lonVar':'longitude', 'lonDef':[0.0,0.28125,1280], 'flipY':False, 'ftype':'nc' },
+   'ERA5'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[0.0,0.25,1440], 'flipY':False, 'ftype':'nc' },
    'GFS'      : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'grib'},
    'GALWEM'   : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':True, 'ftype':'grib'},
    'GALWEM17' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536], 'flipY':False, 'ftype':'grib'},
    'WWMCA'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'grib'},
-   'MPAS'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[90.0,0.50,361],  'lonVar':'longitude',  'lonDef':[0.0,0.50,720],   'flipY':False, 'ftype':'nc'},
+   'MPAS'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721],  'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'nc'},
    'point'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, 'ftype':'nc'},
 }
    #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
@@ -74,13 +76,13 @@ cloudBaseHeightLev4_WWMCA  = { 'parameterName':227, 'typeOfLevel':'hybrid', 'lev
 cloudBaseHeight_WWMCA      = [ cloudBaseHeightLev1_WWMCA, cloudBaseHeightLev2_WWMCA, cloudBaseHeightLev3_WWMCA, cloudBaseHeightLev4_WWMCA ]
 
 verifVariablesModel = {
-    'binaryCloud'    :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UKMO_rand']},
-    'totalCloudFrac' :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UKMO_rand']},
-    'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM17':[lowCloudFrac_GALWEM], 'GALWEM':[lowCloudFrac_GALWEM], 'MPAS':['cldfrac_low_UKMO']},
-    'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM17':[midCloudFrac_GALWEM], 'GALWEM':[midCloudFrac_GALWEM], 'MPAS':['cldfrac_mid_UKMO']},
-    'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM17':[highCloudFrac_GALWEM], 'GALWEM':[highCloudFrac_GALWEM], 'MPAS':['cldfrac_high_UKMO']},
-    'cloudTopHeight' :  {'GFS':['']               , 'GALWEM17':[cloudTopHeight_GALWEM], 'GALWEM':[cloudTopHeight_GALWEM], 'MPAS':['cldht_top_UKMO']},
-    'cloudBaseHeight' : {'GFS':['']               , 'GALWEM17':[cloudBaseHeight_GALWEM], 'GALWEM':[cloudBaseHeight_GALWEM], 'MPAS':['cldht_base_UKMO']},
+    'binaryCloud'    :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UM_rand']},
+    'totalCloudFrac' :  {'GFS':[''], 'GALWEM17':[totalCloudFrac_GALWEM],  'GALWEM':[totalCloudFrac_GALWEM], 'MPAS':['cldfrac_tot_UM_rand']},
+    'lowCloudFrac'   :  {'GFS':[lowCloudFrac_GFS], 'GALWEM17':[lowCloudFrac_GALWEM], 'GALWEM':[lowCloudFrac_GALWEM], 'MPAS':['cldfrac_low_UM']},
+    'midCloudFrac'   :  {'GFS':[midCloudFrac_GFS], 'GALWEM17':[midCloudFrac_GALWEM], 'GALWEM':[midCloudFrac_GALWEM], 'MPAS':['cldfrac_mid_UM']},
+    'highCloudFrac'  :  {'GFS':[highCloudFrac_GFS], 'GALWEM17':[highCloudFrac_GALWEM], 'GALWEM':[highCloudFrac_GALWEM], 'MPAS':['cldfrac_high_UM']},
+    'cloudTopHeight' :  {'GFS':['']               , 'GALWEM17':[cloudTopHeight_GALWEM], 'GALWEM':[cloudTopHeight_GALWEM], 'MPAS':['cldht_top_UM']},
+    'cloudBaseHeight' : {'GFS':['']               , 'GALWEM17':[cloudBaseHeight_GALWEM], 'GALWEM':[cloudBaseHeight_GALWEM], 'MPAS':['cldht_base_UM']},
 }
 
 cloudFracCatThresholds = '>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0' # MET format string
@@ -140,7 +142,8 @@ def getTotalCloudFrac(source,data):
       x = data[0][0,:,:] * 100.0 # the ith element of data is a numpy array
       print(x.min(), x.max())
    elif source == 'ERA5':
-      x = data[0][0,0,:,:] * 100.0
+      try:    x = data[0][0,0,:,:] * 100.0
+      except: x = data[0][0,:,:] * 100.0
    elif source == 'MPAS':
       x = data[0][0,:,:] * 100.0
    else:
@@ -151,6 +154,9 @@ def getTotalCloudFrac(source,data):
    # Then, the non-missing values are 1s and 0s
    #output = np.where(x > 0.0, x, 0.0)
    #output = np.where(x < 0.0, -9999.0, x) # missing. currently used for SATCORPS
+
+   x = np.where( x < 0.0  , 0.0,   x) # Force negative values to zero
+   x = np.where( x > 100.0, 100.0, x) # Force values > 100% to 100%
    return x
 
 def getBinaryCloud(source,data):
@@ -168,11 +174,15 @@ def getLayerCloudFrac(source,data,layer):
    elif source == 'MERRA2':
       x = data[0][0,:,:] * 100.0
    elif source == 'ERA5':
-      x = data[0][0,0,:,:] * 100.0
+      try:    x = data[0][0,0,:,:] * 100.0
+      except: x = data[0][0,:,:] * 100.0
    elif source == 'MPAS':
       x = data[0][0,:,:] * 100.0
    else:
       x = data[0]
+
+   x = np.where( x < 0.0, 0.0, x) # Force negative values to zero
+   x = np.where( x > 100.0, 100.0, x) # Force values > 100% to 100%
 
    return x
 
@@ -182,7 +192,8 @@ def getCloudTopTemp(source,data):
    elif source == 'MERRA2':
       x = data[0][0,:,:] 
    elif source == 'ERA5':
-      x = data[0][0,0,:,:]
+      try:    x = data[0][0,0,:,:]
+      except: x = data[0][0,:,:]
    else:
       x = data[0]
    return x
@@ -193,7 +204,8 @@ def getCloudTopPres(source,data):
    elif source == 'MERRA2':
       x = data[0][0,:,:] * 1.0E-2  # scaling [Pa] -> [hPa]
    elif source == 'ERA5':
-      x = data[0][0,0,:,:]
+      try:    x = data[0][0,0,:,:]
+      except: x = data[0][0,:,:]
    else:
       x = data[0]
    return x
@@ -204,7 +216,8 @@ def getCloudTopHeight(source,data):
    elif source == 'MERRA2':
       x = data[0][0,:,:]     #TBD
    elif source == 'ERA5':
-      x = data[0][0,0,:,:]   #TBD
+      try:    x = data[0][0,0,:,:]
+      except: x = data[0][0,:,:]
    elif source == 'GALWEM17':
       x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
    elif source == 'MPAS':
@@ -231,7 +244,8 @@ def getCloudBaseHeight(source,data):
    elif source == 'MERRA2':
       x = data[0][0,:,:]     #TBD
    elif source == 'ERA5':
-      x = data[0][0,0,:,:]
+      try:    x = data[0][0,0,:,:]
+      except: x = data[0][0,:,:]
    elif source == 'GALWEM17':
       x = data[0] * 1000.0 * 0.3048  # kilofeet -> meters
    elif source == 'MPAS':
@@ -258,7 +272,8 @@ def getCloudCeiling(source,data):
    elif source == 'MERRA2':
       x = data[0][0,:,:]     #TBD
    elif source == 'ERA5':
-      x = data[0][0,0,:,:]   #TBD
+      try:    x = data[0][0,0,:,:] # TBD
+      except: x = data[0][0,:,:]
    return x
 
 # add other functions for different variables
@@ -288,7 +303,7 @@ def getDataArray(inputFile,source,variable,dataSource):
       #nc_fid.set_auto_scale(True)
    elif ftype == 'grib':
       if source == 'WWMCA':
-         idx = pygrib.index(inputFile,'parameterName','typeOfLevel','level')
+        idx = pygrib.index(inputFile,'parameterName','typeOfLevel','level')
       else:
          idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
 
@@ -321,7 +336,7 @@ def getDataArray(inputFile,source,variable,dataSource):
    for v in varsToRead:
       if ftype == 'grib':
          if source == 'WWMCA':
-            x = idx(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'],level=v['level'])[0] # by getting element 0, you get a pygrib message
+           x = idx(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'],level=v['level'])[0] # by getting element 0, you get a pygrib message
          else:
             # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
             if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight':
@@ -349,7 +364,10 @@ def getDataArray(inputFile,source,variable,dataSource):
                read_var = np.ma.filled(read_var.astype(read_var.dtype), np.nan)
       elif ftype == 'nc':
          read_var = nc_fid.variables[v]         # extract/copy the data
-         read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+         try:
+            read_missing = read_var.missing_value  # get variable attributes. Each dataset has own missing values.
+         except:
+            read_missing = -9999. # set a default missing value. probably only need to do this for MPAS
 
       print('Reading ', v)
 
