@@ -339,11 +339,10 @@ def getDataArray(inputFile,source,variable,dataSource):
            x = idx(parameterName=v['parameterName'],typeOfLevel=v['typeOfLevel'],level=v['level'])[0] # by getting element 0, you get a pygrib message
          else:
             # e.g., idx(parameterCategory=6,parameterNumber=1,typeOfFirstFixedSurface=234)
-            if variable == 'cloudTopHeight' or variable == 'cloudBaseHeight':
-               if source == 'GALWEM17': 
-                  x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
-               else:
-                  x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
+            if ( variable == 'cloudTopHeight' or variable == 'cloudBaseHeight') and source == 'GALWEM17': 
+               x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[1] # by getting element 1, you get a pygrib message
+            else:
+               x = idx(parameterCategory=v['parameterCategory'],parameterNumber=v['parameterNumber'],typeOfFirstFixedSurface=v['typeOfFirstFixedSurface'])[0] # by getting element 0, you get a pygrib message
             if x.shortName != v['shortName']: print('Name mismatch!')
             print('Reading ', x.shortName, 'at level ', x.typeOfFirstFixedSurface)
          read_var = x.values # same x.data()[0]
