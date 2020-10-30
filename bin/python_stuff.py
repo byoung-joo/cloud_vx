@@ -30,8 +30,9 @@ Ne, Nf, Ng, Nh = 5, 6, 7, 8
 Ni, Nj, Nk, Nl = 9, 10, 11, 12
 Nm, Nn, No, Np = 13, 14, 15, 16
 
-#entry for 'point' is for point-to-point comparison and is all dummy data (except for gridType) that is overwritten by point2point
-# ERA5 on NCAR CISL RDA changed at some point.  Old is ERA5_2017 (not used anymore), new is ERA5, which we'll use for 2020 data
+# Notes:
+# 1) Entry for 'point' is for point-to-point comparison and is all dummy data (except for gridType) that is overwritten by point2point
+# 2) ERA5 on NCAR CISL RDA changed at some point.  Old is ERA5_2017 (not used anymore), new is ERA5, which we'll use for 2020 data
 griddedDatasets =  {
    'MERRA2'   : { 'gridType':'LatLon', 'latVar':'lat',     'latDef':[-90.0,0.50,361], 'lonVar':'lon',       'lonDef':[-180.0,0.625,576],   'flipY':True, 'ftype':'nc'},
    'SATCORPS' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude', 'lonDef':[-180.0,0.3125,1152], 'flipY':False, 'ftype':'nc' },
@@ -97,7 +98,7 @@ verifVariables = {
    'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'WWMCA':cloudTopHeight_WWMCA,  'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'WWMCA':cloudBaseHeight_WWMCA, 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
-   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<273.15, <270.0, <260.0, <250.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
+   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<280.0, <275.0, <273.15, <270.0, <265.0, <260.0, <255.0, <250.0, <245.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
 }
 
 # Combine the two dictionaries
@@ -438,7 +439,7 @@ def getDataArray(inputFile,source,variable,dataSource):
 def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa), code from UPP ./INITPOST.F
 
    if pmid.shape != cfr.shape:  # sanity check
-      print('dimension mismatch')
+      print('dimension mismatch bewteen cldfra and pressure')
       sys.exit()
 
    nlocs, nlevs = pmid.shape
@@ -452,7 +453,7 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
       idxMid  = np.where(  (pmid[i,:] <  PTOP_LOW) & (pmid[i,:] >= PTOP_MID))[0]
       idxHigh = np.where(  (pmid[i,:] <  PTOP_MID) & (pmid[i,:] >= PTOP_HIGH))[0]
 
-      # use conditions incase all indices are missing
+      # use conditions in case all indices are missing
       if (len(idxLow) >0 ):  cfracl[i] = np.max( cfr[i,idxLow] )
       if (len(idxMid) >0 ):  cfracm[i] = np.max( cfr[i,idxMid] )
       if (len(idxHigh) >0 ): cfrach[i] = np.max( cfr[i,idxHigh] )
@@ -557,7 +558,7 @@ def getGOESRetrivalData(goesFile,goesVar):
    goesData = goesData2d.flatten()
    nc_goes.close()
 
-   # Get rid of NaNs; base it oon longitude
+   # Get rid of NaNs; base it on longitude
    goesData = goesData[~np.isnan(goesLon)] # Handle data arrays first before changing lat/lon itself
    goesQC  = goesQC[~np.isnan(goesLon)]
    goesLon = goesLon[~np.isnan(goesLon)] # ~ is "logical not", also np.logical_not
@@ -586,32 +587,34 @@ def getGOESRetrivalData(goesFile,goesVar):
 
    return goesLon, goesLat, goesData
 
-def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
+def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource):
 
    # Static Variables for QC and obs
-   qcVar  = 'brightness_temperature_'+str(channel)+'@EffectiveQC0' # QC variable
+   qcVar  = 'brightness_temperature_'+str(channel)+'@EffectiveQC' #'@EffectiveQC0' # QC variable
    obsVar = 'brightness_temperature_'+str(channel)+'@ObsValue'  # Observation variable
 
    # Get GOES-16 retrieval file with auxiliary information
    if 'abi' in satellite or 'ahi' in satellite:
-      goesLon, goesLat, goesData = getGOESRetrivalData(goesFile,'PRES')
+      goesLon, goesLat, goesData = getGOESRetrivalData(goesFile,'PRES') # return 1-d arrays
       lonlatGOES = np.array( list(zip(goesLon, goesLat))) # lon/lat pairs for each GOES ob (nobs_GOES, 2)
       print('shape lonlatGOES = ',lonlatGOES.shape)
       myGOESInterpolator = NearestNDInterpolator(lonlatGOES,goesData)
 
-   # Get list of OMB files to process.  There is one file per processor
+   # Get list of OMB files to process.  There is one file per processor.
+   # Need to get them in order so they are called in the same order for the 
+   # forecast and observed passes through this subroutine.
    files = os.listdir(inputDir)
    inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
    inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
+   inputFiles.sort() # Get in order
    if len(inputFiles) == 0: return -99999, -99999 # if no matching files, force a failure
 
    # Variable to pull for brightness temperature
 #  if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@GsiHofXBc' # Forecast variable
-   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@depbg' # OMB
+   if dataSource == 1: v = 'brightness_temperature_'+str(channel)+'@hofx' #'@depbg' # OMB
    if dataSource == 2: v = obsVar
 
    # Read the files and put data in array
-   allData, allDataQC = [], []
    allData, allDataQC = [], []
    for inputFile in inputFiles:
       nc_fid = Dataset(inputFile, "r", format="NETCDF4") #Dataset is the class behavior to open the file
@@ -623,9 +626,9 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
       this_var = np.array( read_var )        # to numpy array
    #  this_var = np.where( this_var==read_missing, np.nan, this_var )
 
-      if dataSource == 1: # If true, we just read in OMB data, but we want B
-         obsData = np.array( nc_fid.variables[obsVar])
-         this_var = obsData - this_var # get background/forecast value (O - OMB = B)
+     #if dataSource == 1: # If true, we just read in OMB data, but we want B
+     #   obsData = np.array( nc_fid.variables[obsVar])
+     #   this_var = obsData - this_var # get background/forecast value (O - OMB = B)
 
       #Read QC data
       qcData = np.array(nc_fid.variables[qcVar])
@@ -639,7 +642,11 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
          #   Values < 0 mean clear sky
          lats = np.array(nc_fid.variables['latitude@MetaData'])
          lons = np.array(nc_fid.variables['longitude@MetaData'])
-         lonlat = np.array( list(zip(lons,lats)))  # lat/lon pairs for each ob (nobs, 2)
+
+	 # Get longitude to between (0,360) for consistency with GOES-16 files
+         lons = np.where( lons < 0, lons + 360.0, lons )
+
+         lonlat = np.array( list(zip(lons,lats)))  # lon/lat pairs for each ob (nobs, 2)
          thisGOESData = myGOESInterpolator(lonlat) # GOES data at obs locations in this file. If pressure, units are hPa
          thisGOESData = thisGOESData * 100.0 # get into Pa
 
@@ -657,16 +664,24 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
          nc_fid2.close()
 
 	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
-         condition = 'cloudyOnly'
          yes = 2.0
          no  = 0.0
          cldfraThresh = 20.0 # percent
          if qcData.shape == fcstTotCldFra.shape == thisGOESData.shape:  # these should all match
             print('Checking F/O correspondence for ABI/AHI')
-            if   condition.lower().strip() == 'clearOnly'.lower(): # clear in both forecast and obs
-               qcData = np.where( (fcstTotCldFra < cldfraThresh) & (thisGOESData <= 0.0), qcData, missing_values)
+
+	    # Note that "&" is "np.logical_and" for boolean (true/false) quantities.
+	    # Thus, each condition should be enclosed in parentheses
+            if   condition.lower().strip() == 'clearOnly'.lower():  # clear in both forecast and obs
+               qcData = np.where( (fcstTotCldFra < cldfraThresh)  & (thisGOESData <= 0.0), qcData, missing_values)
             elif condition.lower().strip() == 'cloudyOnly'.lower(): # cloudy in both forecast and obs
                qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (thisGOESData > 0.0), qcData, missing_values)
+            elif condition.lower().strip() == 'lowOnly'.lower(): # low clouds in both forecast and obs
+               qcData = np.where( (fcstLow >= cldfraThresh) & ( thisGOESData >= PTOP_LOW), qcData, missing_values)
+            elif condition.lower().strip() == 'midOnly'.lower(): # mid clouds in both forecast and obs
+               qcData = np.where( (fcstMid >= cldfraThresh) & (thisGOESData <  PTOP_LOW) & (thisGOESData >= PTOP_MID),   qcData, missing_values)
+            elif condition.lower().strip() == 'highOnly'.lower(): # high clouds in both forecast and obs
+               qcData = np.where( (fcstHigh >= cldfraThresh) & (thisGOESData <  PTOP_MID) & (thisGOESData >= PTOP_HIGH), qcData, missing_values)
             elif condition.lower().strip() == 'cloudEventLow'.lower():
                if dataSource == 1: this_var = np.where( fcstLow      >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( thisGOESData >= PTOP_LOW, yes, no )
@@ -679,6 +694,9 @@ def point2point(source,inputDir,satellite,channel,goesFile,dataSource):
             elif condition.lower().strip() == 'cloudEventTot'.lower():
                if dataSource == 1: this_var = np.where( fcstTotCldFra >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( thisGOESData  > 0.0, yes, no ) 
+            else:
+               print("condition = ",condition," not recognized.")
+               sys.exit()
             #elif condition.lower().strip() == '4x4table'.lower():
               #if dataSource == 1:
 	      #   this_var = np.where( fcstLow >= cldfraThresh, yesLow, no )

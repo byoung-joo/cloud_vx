@@ -61,20 +61,24 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 ####
 
 # Vars used for manual testing of the script
-export START_TIME=2018041500 #2018110100
-export FCST_TIME_LIST="24" # "12 09" # 6 9 12 24 36 48"
+export START_TIME=2020072300 #2018110100
+export FCST_TIME_LIST="12" # "12 09" # 6 9 12 24 36 48"
 export VX_VAR_LIST="brightnessTemp"
 export DOMAIN_LIST="global"  # Probably don't need
 #export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
 export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config 
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx 
-#export FCST_DIR=/glade/scratch/schwartz/pandac_output/junmei
-export FCST_DIR=/glade/scratch/guerrett/pandac/guerrett_3denvar_conv_clramsua_120km/VF/bg
-export GOES16_RETRIEVAL_DIR=/glade/scratch/schwartz/OBS/GOES16
+export FCST_DIR=/glade/scratch/schwartz/pandac/30km_OMF_2020/OMF # OMFs. Has both forecast and obs
+#export FCST_DIR=/glade/scratch/guerrett/pandac/guerrett_3denvar_conv_clramsua_120km/VF/bg
+export GOES16_RETRIEVAL_DIR=/glade/scratch/schwartz/OBS/GOES16 # Location of GOES-16 L2 retrieval files
 export SATELLITE="abi_g16" #"amsua_n19" # format is important and must match filename format
 export CHANNEL_LIST="8 9 10" #"5 6 7 8 9"
 export GS_CONFIG_LIST="${MET_CONFIG}/point2point_all" # MET Grid-Stat and MODE configuration files to be used
+export CONDITION='highOnly' # condition under which to do brightness temperature verification if GOES-16 
+                             #clearOnly, cloudyOnly, lowOnly, midOnly, highOnly
+                             #cloudEventLow, cloudEventMid, cloudEventHigh, cloudEventTot
+                             
 
 # Print run parameters
 ${ECHO}
@@ -124,10 +128,6 @@ ${ECHO} "SATELLITE=${SATELLITE}"
 for FCST_TIME in ${FCST_TIME_LIST}; do
 export FCST_TIME
 
-# Go to working directory
-workdir=${DATAROOT}/metprd/${START_TIME}/f${FCST_TIME}
-${MKDIR} -p ${workdir}
-
 # Loop through the veryfing obs dataset
 for CHANNEL in ${CHANNEL_LIST}; do
 export CHANNEL
@@ -169,31 +169,21 @@ for DOMAIN in ${DOMAIN_LIST}; do
         FCST_HRS=$(printf "%03d" ${FCST_TIME})  #3-digit hour for GFS name
     fi
 
-    #FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-   #FCST_FILE="/glade/scratch/wuyl/test2/Lekima/da/obserr/plot/diag/diags_himawari-8-ahi_2019081100.nc"
-   #FCST_FILE="/glade/scratch/wuyl/test2/pandac/mw/15km_mpas/6hfcst_thomp_DA_bc_noqc_thomp_ocean/2018041806/Data/obsout_3dvar_amsua_n19--hydro_0252.nc4"
-   #THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/f${FCST_TIME}
-    THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/Data
+    #We need a directory for the GOES data, as there is 1 processor per file
+    THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/f${FCST_TIME}/Data
 
     # Make sure the directory exists
     if [ ! -d ${THIS_FCST_DIR} ]; then
-        ${ECHO} "ERROR: Could not find forecast dir: ${THIS_FCST_DIR}"
+        ${ECHO} "ERROR: Could not find dir for GOES OMB files: ${THIS_FCST_DIR}"
         exit 1
     fi
 
-    # Define GOES-16 retrieval file
-   #GOES16_FILE=${GOES16_RETRIEVAL_DIR}/...
-    GOES16_FILE=/glade/scratch/schwartz/OBS/GOES16/20200815/L2-CTP/OR_ABI-L2-CTPF-M6_G16_s20202280030202_e20202280039510_c20202280041194.nc
+    # Define GOES-16 retrieval file at the correct valid time
+    GOES16_FILE=${GOES16_RETRIEVAL_DIR}/${VYYYYMMDD}/L2-CTP/GOES16_L2-CTPF-M6_${VDATE}.nc
+   #GOES16_FILE=/glade/scratch/schwartz/OBS/GOES16/20200815/L2-CTP/OR_ABI-L2-CTPF-M6_G16_s20202280030202_e20202280039510_c20202280041194.nc
     if [ ! -e ${GOES16_FILE} ]; then
        ${ECHO} "ERROR: ${GOES16_FILE} does not exist!"
        exit 1
-    fi
-
-    # Get the processed observation directory...probably same as FCST directory
-    OBS_DIR=$THIS_FCST_DIR
-    if [ ! -d ${OBS_DIR} ]; then
-	${ECHO} "ERROR: Could not find obs dir: ${OBS_DIR}"
-	exit 1
     fi
 
     #######################################################################
@@ -202,6 +192,22 @@ for DOMAIN in ${DOMAIN_LIST}; do
     #
     #######################################################################
 
+    # Go to working directory
+    workdir=${DATAROOT}/metprd/${START_TIME}/f${FCST_TIME}
+    thisDir=${workdir}/${SATELLITE}/channel${CHANNEL}_${CONDITION}
+    ${MKDIR} -p ${thisDir}
+    cd ${thisDir}
+    ${CP} ${DATAROOT}/bin/python_stuff.py .
+
+    # Get the verification thresholds.
+    if [[ $CONDITION == "cloudEventLow" || $CONDITION == "cloudEventMid" || \
+          $CONDITION == "cloudEventHigh" || $CONDITION == "cloudEventTot" ]]; then
+       export thresholds=['>=1.0']
+    else
+       export thresholds=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
+    fi
+    echo "THRESHOLDS = $thresholds"
+
     for CONFIG_FILE in ${GS_CONFIG_LIST}; do
 
         # Make sure the Grid-Stat configuration file exists
@@ -209,24 +215,13 @@ for DOMAIN in ${DOMAIN_LIST}; do
             ${ECHO} "ERROR: ${CONFIG_FILE} does not exist!"
             exit 1
         fi
-	
-	thisDir=${workdir}/${SATELLITE}/channel${CHANNEL}
-        ${MKDIR} -p ${thisDir}
-	cd ${thisDir}
-        ${CP} ${DATAROOT}/bin/python_stuff.py .
 
-        # Get the verification thresholds.
-	# This could be done further up, but we don't copy python_stuff.py until the above line.
-	export thresholds=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for lis
-        echo "THRESHOLDS = $thresholds"
-
+        # generate python script for forecast (1) and obs (2)
         for i in 1 2; do
 	   if [ $i == 1 ]; then
 	      scriptName=./python_script_fcst.py
-	      dataDir=${THIS_FCST_DIR}
 	   elif [ $i == 2 ]; then
 	      scriptName=./python_script_obs.py
-	      dataDir=${OBS_DIR}
 	   fi
 	   ${ECHO} "Python script=$scriptName"
            cat > $scriptName << EOF
@@ -234,10 +229,10 @@ import os
 import numpy as np
 import python_stuff  # this is where all the work is done
 
-dataDir = '$dataDir'
+dataDir = '$THIS_FCST_DIR' # same for forecast and obs
 variable = '$VX_VAR'
 
-met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},'${GOES16_FILE}',${i})
+met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},'${GOES16_FILE}','${CONDITION}',${i})
 attrs = python_stuff.getAttrArray('point',variable,'${START_TIME}','${VDATE}')
 attrs['grid'] = gridInfo
 EOF
@@ -256,7 +251,7 @@ EOF
 
 	error=$?
 	if [ ${error} -ne 0 ]; then
-	    ${ECHO} "ERROR: For ${SATELLITE}, ${MET_EXE_ROOT}/grid_stat crashed  Exit status: ${error}"
+	    ${ECHO} "ERROR: For ${SATELLITE} channel ${CHANNEL}, ${MET_EXE_ROOT}/grid_stat crashed  Exit status: ${error}"
 	    exit ${error}
 	fi
 
