@@ -65,7 +65,7 @@ fcst = {
 //        name       = "APCP";
 //        level      = [ "R01" ];
 
-        cat_thresh = ${thresholds};
+        cat_thresh = ${thresholdsFcst};
       }
    ];
 }
@@ -76,7 +76,7 @@ obs = {
       {
         name       = "python_script_obs.py";
 //      cat_thresh = [ >=100, >=50 ];
-        cat_thresh = ${thresholds};
+        cat_thresh = ${thresholdsObs};
       }
    ];
 }

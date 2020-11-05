@@ -61,7 +61,7 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 ####
 
 # Vars used for manual testing of the script
-export START_TIME=2020072300 #2018110100
+export START_TIME=2020072500 #2018110100
 export FCST_TIME_LIST="12" # "12 09" # 6 9 12 24 36 48"
 export VX_VAR_LIST="brightnessTemp"
 export DOMAIN_LIST="global"  # Probably don't need
@@ -74,11 +74,11 @@ export FCST_DIR=/glade/scratch/schwartz/pandac/30km_OMF_2020/OMF # OMFs. Has bot
 export GOES16_RETRIEVAL_DIR=/glade/scratch/schwartz/OBS/GOES16 # Location of GOES-16 L2 retrieval files
 export SATELLITE="abi_g16" #"amsua_n19" # format is important and must match filename format
 export CHANNEL_LIST="8 9 10" #"5 6 7 8 9"
-export GS_CONFIG_LIST="${MET_CONFIG}/point2point_all" # MET Grid-Stat and MODE configuration files to be used
-export CONDITION='highOnly' # condition under which to do brightness temperature verification if GOES-16 
-                             #clearOnly, cloudyOnly, lowOnly, midOnly, highOnly
+export GS_CONFIG_LIST="${MET_CONFIG}/point2point_all" # MET configuration files to be used
+export CONDITION='highOnly' # condition under which to do brightness temperature verification if GOES-16/17
+                             #all, clearOnly, cloudyOnly, lowOnly, midOnly, highOnly
                              #cloudEventLow, cloudEventMid, cloudEventHigh, cloudEventTot
-                             
+export layerDefinitions='ERA5' # Either 'UPP' or 'ERA5'. How to define layers for low/mid/high clouds
 
 # Print run parameters
 ${ECHO}
@@ -95,6 +95,7 @@ ${ECHO} "      FCST_DIR = ${FCST_DIR}"
 ${ECHO} "  GOES16_RETRIEVAL_DIR = ${GOES16_RETRIEVAL_DIR}"
 ${ECHO} "     SATELLITE = ${SATELLITE}"
 ${ECHO} "      CHANNELS = ${CHANNEL_LIST}"
+${ECHO} "     CONDITION = ${CONDITION}"
 
 # Make sure $DATAROOT exists
 if [ ! -d "${DATAROOT}" ]; then
@@ -142,6 +143,7 @@ for DOMAIN in ${DOMAIN_LIST}; do
     export DOMAIN
     ${ECHO} "DOMAIN=${DOMAIN}"
     ${ECHO} "FCST_TIME=${FCST_TIME}"
+    #FCST_HRS=$(printf "%03d" ${FCST_TIME})  #3-digit forecst hour 
 
     # Compute the verification date
     YYYYMMDD=`${ECHO} ${START_TIME} | ${CUT} -c1-8` # Forecast initialization time
@@ -157,19 +159,11 @@ for DOMAIN in ${DOMAIN_LIST}; do
     VHHMMSS=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} 0 -F hhnnss`
     ${ECHO} 'valid time for ' ${FCST_TIME} 'h forecast = ' ${VDATE}
 
-    # Specify mask directory structure
+    # Specify mask directory structure ... aren't really using for TB verification, but keep 
     MASKS=${MET_CONFIG}/masks
     export MASKS
 
-    # Get the forecast to verify
-    if [ ${FCST_TIME} == "09" ]; then # Need some weird logic for FCST_TIME = 09
-	FCST_HRS=$(printf "%03d" ${FCST_TIME##+(0)})  #3-digit hour for GFS name
-	FCST_TIME=$(printf "%01d" ${FCST_TIME##+(0)}) #1-digit...this line probably not needed
-    else
-        FCST_HRS=$(printf "%03d" ${FCST_TIME})  #3-digit hour for GFS name
-    fi
-
-    #We need a directory for the GOES data, as there is 1 processor per file
+    #We need a DIRECTORY for the satellite data, as there is 1 file per processor
     THIS_FCST_DIR=${FCST_DIR}/${START_TIME}/f${FCST_TIME}/Data
 
     # Make sure the directory exists
@@ -198,15 +192,18 @@ for DOMAIN in ${DOMAIN_LIST}; do
     ${MKDIR} -p ${thisDir}
     cd ${thisDir}
     ${CP} ${DATAROOT}/bin/python_stuff.py .
+    ln -sf $GOES16_FILE . # Link so we can quickly see what the GOES file is.
 
     # Get the verification thresholds.
     if [[ $CONDITION == "cloudEventLow" || $CONDITION == "cloudEventMid" || \
           $CONDITION == "cloudEventHigh" || $CONDITION == "cloudEventTot" ]]; then
-       export thresholds=['>=1.0']
+       export thresholdsFcst=['>=1.0'] # these conditions are binary yes/no fields, with values set to 2 for yes, 0 for no, so use threshold of 1
     else
-       export thresholds=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
+       export thresholdsFcst=[`python -c "import python_stuff; python_stuff.getThreshold('$VX_VAR')"`] # add brackets for MET convention for list
     fi
-    echo "THRESHOLDS = $thresholds"
+    export thresholdsFcst=`echo $thresholdsFcst | sed -e "s/SOP/SFP/g"` # make sure SOP --> SFP for percentiles
+    export thresholdsObs=$thresholdsFcst
+    export thresholdsObs=`echo $thresholdsObs | sed -e "s/SFP/SOP/g"` # make sure SFP --> SOP for percentiles
 
     for CONFIG_FILE in ${GS_CONFIG_LIST}; do
 
@@ -232,13 +229,15 @@ import python_stuff  # this is where all the work is done
 dataDir = '$THIS_FCST_DIR' # same for forecast and obs
 variable = '$VX_VAR'
 
-met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},'${GOES16_FILE}','${CONDITION}',${i})
+met_data, gridInfo = python_stuff.point2point('point',dataDir,'${SATELLITE}',${CHANNEL},'${GOES16_FILE}','${CONDITION}','${layerDefinitions}',${i})
 attrs = python_stuff.getAttrArray('point',variable,'${START_TIME}','${VDATE}')
 attrs['grid'] = gridInfo
 EOF
 
         done # loop over i=1,2, once for forecast, another for obs
         
+        ${ECHO} "thresholdsFcst = $thresholdsFcst"
+        ${ECHO} "thresholdsObs = $thresholdsObs"
 	${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat PYTHON_NUMPY PYTHON_NUMPY ${CONFIG_FILE} -outdir ${thisDir} -v 2"
 
 	# Run grid_stat
@@ -254,14 +253,6 @@ EOF
 	    ${ECHO} "ERROR: For ${SATELLITE} channel ${CHANNEL}, ${MET_EXE_ROOT}/grid_stat crashed  Exit status: ${error}"
 	    exit ${error}
 	fi
-
-	# TODO: This is temporary plotting using MET executable.
-	# Run plot_data_plane
-#${MET_EXE_ROOT}/plot_data_plane PYTHON_NUMPY \
-#  ${workdir}/${SATELLITE}/channel${CHANNEL}/${SATELLITE}_channel${CHANNEL}_${START_TIME}_f${FCST_HRS}.ps \
-#  -title ${SATELLITE}_channel${CHANNEL}_${START_TIME}_f${FCST_HRS} \
-#  -color_table /glade/p/ral/jntp/MET/MET_releases/8.0/met-8.0/data/colortables/NCL_colortables/wh-bl-gr-ye-re.ctable \
-#  'name="python_script_obs.py";'
 
     done #CONFIG_FILE loop
 

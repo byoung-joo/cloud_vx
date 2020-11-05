@@ -20,9 +20,9 @@ import pygrib
 missing_values = -9999.0  # for MET
 
 # UPP top layer bounds (Pa) for cloud layers
-PTOP_LOW  = 64200. # low for > 64200 Pa
-PTOP_MID  = 35000. # mid between 35000-64200 Pa
-PTOP_HIGH = 15000. # high between 15000-35000 Pa
+PTOP_LOW_UPP  = 64200. # low for > 64200 Pa
+PTOP_MID_UPP  = 35000. # mid between 35000-64200 Pa
+PTOP_HIGH_UPP = 15000. # high between 15000-35000 Pa
 
 # Values for 4 x 4 contingency table
 Na, Nb, Nc, Nd = 1, 2, 3, 4 
@@ -87,6 +87,7 @@ verifVariablesModel = {
 }
 
 cloudFracCatThresholds = '>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0' # MET format string
+brightnessTempThresholds = '<280.0, <275.0, <273.15, <270.0, <265.0, <260.0, <255.0, <250.0, <245.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0, <=SFP1, <=SFP5, <=SFP10'
 verifVariables = {
    'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
    'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
@@ -98,7 +99,7 @@ verifVariables = {
    'cloudTopHeight' : { 'MERRA2':['']      , 'SATCORPS':['cloud_height_top_level'],      'ERA5':['']   , 'WWMCA':cloudTopHeight_WWMCA,  'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudBaseHeight': { 'MERRA2':['']      , 'SATCORPS':['cloud_height_base_level'],     'ERA5':['CBH'], 'WWMCA':cloudBaseHeight_WWMCA, 'units':'m',   'thresholds':'NA', 'interpMethod':'nearest'},
    'cloudCeiling'   : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'m',   'thresholds':'NA', 'interpMethod':'bilin'},
-   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':'<280.0, <275.0, <273.15, <270.0, <265.0, <260.0, <255.0, <250.0, <245.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0', 'interpMethod':'bilin'},
+   'brightnessTemp' : { 'MERRA2':['']      , 'SATCORPS':[''],                            'ERA5':['']   , 'units':'K',   'thresholds':brightnessTempThresholds, 'interpMethod':'bilin'},
 }
 
 # Combine the two dictionaries
@@ -436,7 +437,7 @@ def getDataArray(inputFile,source,variable,dataSource):
 
    return met_data
 
-def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa), code from UPP ./INITPOST.F
+def getFcstCloudFrac(cfr,pmid,psfc,layerDefinitions): # cfr is cloud fraction(%), pmid is 3D pressure(Pa), psfc is surface pressure (Pa) code from UPP ./INITPOST.F
 
    if pmid.shape != cfr.shape:  # sanity check
       print('dimension mismatch bewteen cldfra and pressure')
@@ -444,11 +445,24 @@ def getFcstCloudFrac(cfr,pmid): # cfr is cloud fraction(%), pmid is pressure(Pa)
 
    nlocs, nlevs = pmid.shape
 
+   if len(psfc) != nlocs: # another sanity check
+      print('dimension mismatch bewteen cldfra and surface pressure')
+      sys.exit()
+
    cfracl = np.zeros(nlocs)
    cfracm = np.zeros(nlocs)
    cfrach = np.zeros(nlocs)
 
    for i in range(0,nlocs):
+
+      PTOP_HIGH = PTOP_HIGH_UPP
+      if layerDefinitions.upper().strip() == 'ERA5':
+         PTOP_LOW = 0.8*psfc[i]
+         PTOP_MID = 0.45*psfc[i]
+      elif layerDefinitions.upper().strip() == 'UPP':
+         PTOP_LOW = PTOP_LOW_UPP
+         PTOP_MID = PTOP_MID_UPP
+
       idxLow  = np.where(   pmid[i,:] >= PTOP_LOW)[0] # using np.where with just 1 argument returns tuple
       idxMid  = np.where(  (pmid[i,:] <  PTOP_LOW) & (pmid[i,:] >= PTOP_MID))[0]
       idxHigh = np.where(  (pmid[i,:] <  PTOP_MID) & (pmid[i,:] >= PTOP_HIGH))[0]
@@ -544,7 +558,7 @@ def getGOESRetrivalData(goesFile,goesVar):
    #  we then can manually apply the scale factor and offset
    #goesVar = 'PRES'
    goesVar = goesVar.strip() # for safety
-   if nc_goes.variables[goesVar]._Unsigned.lower().strip()  == 'true':
+   if nc_goes.variables[goesVar]._Unsigned.lower().strip() == 'true':
       nc_goes.set_auto_scale(False) # Don't automatically apply scale_factor and add_offset to variable
       goesData2d = np.array( nc_goes.variables[goesVar]).astype(np.uint16)
       goesData2d = goesData2d * nc_goes.variables[goesVar].scale_factor + nc_goes.variables[goesVar].add_offset
@@ -571,15 +585,15 @@ def getGOESRetrivalData(goesFile,goesVar):
    # If goesQC == 4, no cloud; probably clear sky.
    # All other QC means no data, and we want to remove those points
    idx = np.logical_or( goesQC == 0, goesQC == 4) # Only keep QC == 0 or 4
-   goesLon = goesLon[idx]
-   goesLat = goesLat[idx]
    goesData = goesData[idx]
    goesQC  = goesQC[idx]
+   goesLon = goesLon[idx]
+   goesLat = goesLat[idx]
 
    # Only QC with 0 or 4 are left; now set QC == 4 to missing to indicate clear sky
    goesData = np.where( goesQC != 0, missing_values, goesData)
 
-   # Get longitude to between (0,360) for consistency with JEDI files (add check to JEDI files, too)
+   # Get longitude to between (0,360) for consistency with JEDI files (this check is applied to JEDI files, too)
    goesLon = np.where( goesLon < 0, goesLon + 360.0, goesLon )
 
    print('Min GOES Lon = ',np.min(goesLon))
@@ -587,7 +601,7 @@ def getGOESRetrivalData(goesFile,goesVar):
 
    return goesLon, goesLat, goesData
 
-def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource):
+def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefinitions,dataSource):
 
    # Static Variables for QC and obs
    qcVar  = 'brightness_temperature_'+str(channel)+'@EffectiveQC' #'@EffectiveQC0' # QC variable
@@ -597,7 +611,8 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
    if 'abi' in satellite or 'ahi' in satellite:
       goesLon, goesLat, goesData = getGOESRetrivalData(goesFile,'PRES') # return 1-d arrays
       lonlatGOES = np.array( list(zip(goesLon, goesLat))) # lon/lat pairs for each GOES ob (nobs_GOES, 2)
-      print('shape lonlatGOES = ',lonlatGOES.shape)
+     #print('shape lonlatGOES = ',lonlatGOES.shape)
+      print('getting data from ',goesFile)
       myGOESInterpolator = NearestNDInterpolator(lonlatGOES,goesData)
 
    # Get list of OMB files to process.  There is one file per processor.
@@ -606,7 +621,7 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
    files = os.listdir(inputDir)
    inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
    inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
-   inputFiles.sort() # Get in order
+   inputFiles.sort() # Get in order from low to high
    if len(inputFiles) == 0: return -99999, -99999 # if no matching files, force a failure
 
    # Variable to pull for brightness temperature
@@ -639,7 +654,7 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
       if 'abi' in satellite or 'ahi' in satellite:
 
          # Get the GOES-16 retrieval data at the observation locations in this file
-         #   Values < 0 mean clear sky
+         #   GOES values < 0 mean clear sky
          lats = np.array(nc_fid.variables['latitude@MetaData'])
          lons = np.array(nc_fid.variables['longitude@MetaData'])
 
@@ -660,7 +675,20 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
          nc_fid2 = Dataset(geoValsFile, "r", format="NETCDF4")
          fcstCldfra = np.array( nc_fid2.variables['cloud_area_fraction_in_atmosphere_layer'])*100.0 # Get into %
          pressure   = np.array( nc_fid2.variables['air_pressure']) # Pa
-         fcstLow,fcstMid,fcstHigh,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure) # get low/mid/high/total forecast cloud fractions for each ob
+         pressure_edges   = np.array( nc_fid2.variables['air_pressure_levels']) # Pa
+         psfc = pressure_edges[:,-1]  # Surface pressure (Pa)...array order is top down
+         if layerDefinitions.upper().strip() == 'ERA5':
+            PTOP_LOW = 0.8*psfc # these are arrays
+            PTOP_MID = 0.45*psfc
+            PTOP_HIGH = PTOP_HIGH_UPP * np.ones_like(psfc)
+         elif layerDefinitions.upper().strip() == 'UPP':
+            PTOP_LOW = PTOP_LOW_UPP # these are constants
+            PTOP_MID = PTOP_MID_UPP
+            PTOP_HIGH = PTOP_HIGH_UPP
+         else:
+            print('layerDefinitions = ',layerDefinitions,'is invalid. exit')
+            sys.exit()
+         fcstLow,fcstMid,fcstHigh,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure,psfc,layerDefinitions) # get low/mid/high/total forecast cloud fractions for each ob
          nc_fid2.close()
 
 	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
@@ -668,7 +696,7 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
          no  = 0.0
          cldfraThresh = 20.0 # percent
          if qcData.shape == fcstTotCldFra.shape == thisGOESData.shape:  # these should all match
-            print('Checking F/O correspondence for ABI/AHI')
+            print('Using condition ',condition,'for ABI/AHI')
 
 	    # Note that "&" is "np.logical_and" for boolean (true/false) quantities.
 	    # Thus, each condition should be enclosed in parentheses
@@ -694,6 +722,8 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
             elif condition.lower().strip() == 'cloudEventTot'.lower():
                if dataSource == 1: this_var = np.where( fcstTotCldFra >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( thisGOESData  > 0.0, yes, no ) 
+            elif condition.lower().strip() == 'all':
+               print("not doing any conditional verification or stratifying by event")
             else:
                print("condition = ",condition," not recognized.")
                sys.exit()
@@ -714,13 +744,15 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,dataSource)
 
       nc_fid.close() # done with the file, so close it before going to next file in loop
 
+   # We're now all done looping over the individul files
+
    # Get the indices with acceptable QC
    allQC = np.concatenate(allDataQC) # Put list of numpy arrays into a single long 1-D numpy array.  All QC data.
    idx = np.where(allQC==0) # returns indices
 
    # Now get all the forecast/observed brightness temperature data with acceptable QC
    this_var = np.concatenate(allData)[idx] # Put list of numpy arrays into a single long 1-D numpy array. This is all the forecast/obs data with good QC
-   numObs = this_var.shape[0] # number of points for one channel
+   numObs = this_var.shape[0] # number of points with good QC for this channel
    print('Number of obs :',numObs)
 
    # Assume all the points actually fit into a square grid. Get the side of the square (use ceil to round up)
