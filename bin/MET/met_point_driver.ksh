@@ -35,11 +35,24 @@ CP=/bin/cp
 CUT=`which cut`
 DATE=/bin/date
 
+# MET v8.1--this is what we used prior to 18 June 2020
+#source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
+#module purge
+#module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
+#module load met/8.1_python
+#ncar_pylib
+
+# MET v9.0
 source /glade/u/apps/ch/modulefiles/default/localinit/localinit.sh
 module purge
 module use /glade/p/ral/jntp/MET/MET_releases/modulefiles
-module load met/8.1_python
+module load met/9.0
+module load ncarenv
 ncar_pylib
+   # specify full path to local python exectuable...needed such that MET
+   # executes the python script with the user's version of python (and environment and loaded packages) rather than the python build
+   # defined at MET compilation time.
+export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt/python/3.6.8/gnu/8.3.0/pkg-library/20200417/bin/python
 
 # Vars used for manual testing of the script
 #export START_TIME=2017060506
@@ -48,12 +61,14 @@ ncar_pylib
 #export VX_VAR_LIST="Cloud_Mask"
 #export DOMAIN_LIST="global"
 #export GRID_VX="NONE"
-#export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
+###export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/8.1_python/bin
+#export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 #export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config
 #export DATAROOT=/glade/scratch/`whoami`/cloud_vx
-#export FCST_DIR=/glade/scratch/schwartz/GALWEM
+###export FCST_DIR=/glade/scratch/schwartz/MPAS/30km_mesh/cold_start  # MPAS model, 30-km forecasts, interpolated to 0.25 degrees
+###export FCST_DIR=/glade/scratch/schwartz/GALWEM # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017), "GALWEM" is 0.25 degree from Air Force in 2020-2021
 #export RAW_OBS=/glade/scratch/schwartz/OBS
-#export MODEL="ERA5" #"GALWEM" # or even "ERA5" "SATCORPS" "MERRA2" , "GFS" #"hrconus"
+#export MODEL="ERA5" #"GALWEM" # or even "MPAS" "ERA5" "SATCORPS" "MERRA2" , "GFS" #"hrconus"
 
 #export DO_MPR="BOTH" # BOTH, STAT, NONE for MPR line_type
 export DO_MPR=${DO_MPR:-"NONE"}
@@ -237,8 +252,10 @@ for DOMAIN in ${DOMAIN_LIST}; do
 
    if [ ${MODEL} == "GFS" ]; then
        FCST_FILE=${FCST_DIR}/${START_TIME}/gfs.0p25.${START_TIME}.f${FCST_HRS}.grib2
-   elif [ ${MODEL} == "GALWEM" ]; then
+   elif [ ${MODEL} == "GALWEM17" ]; then
        FCST_FILE=${FCST_DIR}/${MMDD}/GPP_17km_combined_${YYYYMMDD}_CY${HH}_FH${FCST_HRS}.GR2
+   elif [ ${MODEL} == "GALWEM" ]; then
+       FCST_FILE=${FCST_DIR}/${START_TIME}/PS.557WW_SC.U_DI.C_DC.GRID_GP.GALWEM-GD_SP.COMPLEX_GR.C0P25DEG_AR.GLOBAL_PA.NCAR_DD.${YYYYMMDD}_CY.${HH}_FH.${FCST_HRS}_DF.GR2
    elif  [ ${MODEL} == "SATCORPS" ]; then
        JDAY=`${DATAROOT}/exec/da_advance_time.exe  ${VDATE} 0 -j | awk '{print $2}'`  #for SATCORPS name
        FCST_FILE=${RAW_OBS}/${MODEL}/prod.Global-GEO.visst-grid-netcdf.${VYYYY}${VMM}${VDD}.GEO-MRGD.${VYYYY}${JDAY}.${VHH}00.GRID.NC
@@ -249,6 +266,11 @@ for DOMAIN in ${DOMAIN_LIST}; do
        FCST_FILE=${RAW_OBS}/${MODEL}/${MODEL}_400.tavg1_2d_${TMP_YYYYMMDD}_${TMP_HHMM}.nc4
    elif  [ ${MODEL} == "ERA5" ]; then
        FCST_FILE=${RAW_OBS}/${MODEL}/${MODEL}_${VDATE}.nc
+   elif  [ ${MODEL} == "WWMCA" ]; then # Let's treat WWMCA as the model to compare to SATCORPS!
+       FCST_FILE=${RAW_OBS}/${MODEL}/WWMCA_${VDATE}00_ECE15_M.GR1
+   elif [ ${MODEL} == "MPAS" ]; then
+      MPAS_VALID_TIME=`${DATAROOT}/exec/da_advance_time.exe ${VDATE} 0 -f ccyy-mm-dd_hh.nn.ss`
+      FCST_FILE=${FCST_DIR}/${START_TIME}/fc_48h/GFS_FV3_initial_conditions/diag.${MPAS_VALID_TIME}_latlon.nc
    else
        ${ECHO} "ERROR: MODEL = $MODEL not currently supported"
        exit 1

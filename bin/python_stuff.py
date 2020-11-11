@@ -756,27 +756,30 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefini
    print('Number of obs :',numObs)
 
    # Assume all the points actually fit into a square grid. Get the side of the square (use ceil to round up)
-   l = np.ceil(np.sqrt(numObs)).astype('int') # Length of the side of the square
+   if numObs > 0:
+      l = np.ceil(np.sqrt(numObs)).astype('int') # Length of the side of the square
 
-   # Make an array that can be reshaped into the square 
-   raw_data1D = np.full(l*l,np.nan) # Initialize 1D array of length l**2 to np.nan
-   raw_data1D[0:numObs] = this_var[:] # Fill data to the extent possible. There will be some np.nan values at the end
-   raw_data = np.reshape(raw_data1D,(l,l)) # Reshape into "square grid"
+      # Make an array that can be reshaped into the square 
+      raw_data1D = np.full(l*l,np.nan) # Initialize 1D array of length l**2 to np.nan
+      raw_data1D[0:numObs] = this_var[:] # Fill data to the extent possible. There will be some np.nan values at the end
+      raw_data = np.reshape(raw_data1D,(l,l)) # Reshape into "square grid"
 
-   raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
+      raw_data = np.where(np.isnan(raw_data), missing_values, raw_data) # replace np.nan to missing_values (for MET)
 
-   met_data=raw_data.astype(float) # Give MET this info
+      met_data=raw_data.astype(float) # Give MET this info
 
-   # Now need to tell MET the "grid" for the data
-   # Make a fake lat/lon grid going from 0.0 to 50.0 degrees, with the interval determined by number of points
-   griddedDatasets[source]['latDef'][0] = 0.0 # starting point
-   griddedDatasets[source]['latDef'][1] = np.diff(np.linspace(0,50,l)).round(6)[0] # interval (degrees)
-   griddedDatasets[source]['latDef'][2] = int(l) # number of points
-   griddedDatasets[source]['lonDef'][0:3] = griddedDatasets[source]['latDef']
+      # Now need to tell MET the "grid" for the data
+      # Make a fake lat/lon grid going from 0.0 to 50.0 degrees, with the interval determined by number of points
+      griddedDatasets[source]['latDef'][0] = 0.0 # starting point
+      griddedDatasets[source]['latDef'][1] = np.diff(np.linspace(0,50,l)).round(6)[0] # interval (degrees)
+      griddedDatasets[source]['latDef'][2] = int(l) # number of points
+      griddedDatasets[source]['lonDef'][0:3] = griddedDatasets[source]['latDef']
 
-   gridInfo = getGridInfo(source, griddedDatasets[source]['gridType']) # 'LatLon' gridType
+      gridInfo = getGridInfo(source, griddedDatasets[source]['gridType']) # 'LatLon' gridType
+      return met_data, gridInfo
 
-   return met_data, gridInfo
+   else:
+      return -99999, -99999
 
 ###########
 def getGridInfo(source,gridType):
