@@ -13,6 +13,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.basemap import Basemap
 import fnmatch
 import pygrib
+import pickle as pk
 #####
 
 ###########################################
@@ -43,6 +44,7 @@ griddedDatasets =  {
    'GALWEM17' : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-89.921875,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536], 'flipY':False, 'ftype':'grib'},
    'WWMCA'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721], 'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'grib'},
    'MPAS'     : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.25,721],  'lonVar':'longitude',  'lonDef':[0.0,0.25,1440],   'flipY':False, 'ftype':'nc'},
+   'SAT_WWMCA_MEAN' : { 'gridType':'LatLon', 'latVar':'lat','latDef':[-90.0,0.25,721], 'lonVar':'lon', 'lonDef':[0.0,0.25,1440], 'flipY':False, 'ftype':'nc' },
    'point'    : { 'gridType':'LatLon', 'latVar':'latitude','latDef':[-90.0,0.156250,1152], 'lonVar':'longitude',  'lonDef':[0.117187,0.234375,1536],   'flipY':False, 'ftype':'nc'},
 }
    #TODO:Correct one, but MET can ingest a Gaussian grid only in Grib2 format (from Randy B.)
@@ -89,8 +91,8 @@ verifVariablesModel = {
 cloudFracCatThresholds = '>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0' # MET format string
 brightnessTempThresholds = '<280.0, <275.0, <273.15, <270.0, <265.0, <260.0, <255.0, <250.0, <245.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0, <=SFP1, <=SFP5, <=SFP10'
 verifVariables = {
-   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
-   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
+   'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'SAT_WWMCA_MEAN':['Mean_WWMCA_SATCORPS'], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
+   'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'SAT_WWMCA_MEAN':['Mean_WWMCA_SATCORPS'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
    'lowCloudFrac'   : { 'MERRA2':['CLDLOW'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['LCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
    'midCloudFrac'   : { 'MERRA2':['CLDMID'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['MCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
    'highCloudFrac'  : { 'MERRA2':['CLDHGH'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['HCC'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
@@ -148,6 +150,8 @@ def getTotalCloudFrac(source,data):
       except: x = data[0][0,:,:] * 100.0
    elif source == 'MPAS':
       x = data[0][0,:,:] * 100.0
+   elif source == 'SAT_WWMCA_MEAN':
+      x = data[0][0,:,:] # already in %
    else:
       x = data[0]
 
@@ -307,7 +311,7 @@ def getDataArray(inputFile,source,variable,dataSource):
       if source == 'WWMCA':
         idx = pygrib.index(inputFile,'parameterName','typeOfLevel','level')
       else:
-         idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
+        idx = pygrib.index(inputFile,'parameterCategory','parameterNumber','typeOfFirstFixedSurface')
 
    # dataSource == 1 means forecast, 2 means obs
 #  if dataSource == 1: varsToRead = verifVariablesModel[variable][source] # if ftype == 'grib', returns a list whose ith element is a dictionary. otherwise, just a list
@@ -436,6 +440,42 @@ def getDataArray(inputFile,source,variable,dataSource):
    if ftype == 'nc':   nc_fid.close() # Close the netCDF file
 
    return met_data
+
+def obsError(fcstData,obsErrorFile,validDate):
+
+   print('Adding noise to the cloud fraction fields')
+   print('Using obsErrorFile',obsErrorFile)
+
+   # First load the obsError information
+   #obsErrorFile = 'ob_errors.pk'
+   infile = open(obsErrorFile,'rb')
+   binEdges, binStddev = pk.load(infile) # 'numpy.ndarray' types
+   infile.close()
+
+   # Get 1d forecast data
+   shape = fcstData.shape
+   fcst = fcstData.flatten()
+
+   # Set random number seed
+   np.random.seed(int(validDate*.1)) # need a second condition?  different values for different experiments?
+
+   # Find which bin the observation data is in
+   for i in range(0,len(binEdges)-1):
+      idx = np.where( (fcst >= binEdges[i]) & (fcst < binEdges[i+1]) )[0]
+      n = len(idx) # number of points in the ith bin
+      if n > 0: # check for empty bins
+         randVals = np.random.normal(0,binStddev[i],n)
+         fcst[idx] = fcst[idx] + randVals
+
+   # bound forecast values to between 0 and 100%
+   fcst = np.where( fcst < 0.0,     0.0,   fcst)
+   fcst = np.where( fcst > 100.0,   100.0, fcst)
+
+   # now reshape forecast data back to 2D
+   output = fcst.reshape(shape)
+   
+   # data will have NaNs where bad.
+   return output
 
 def getFcstCloudFrac(cfr,pmid,psfc,layerDefinitions): # cfr is cloud fraction(%), pmid is 3D pressure(Pa), psfc is surface pressure (Pa) code from UPP ./INITPOST.F
 

@@ -63,8 +63,8 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 
 # Vars used for manual testing of the script
 export START_TIME=2020072300 #2017060500 #2018110100
-export FCST_TIME_LIST="00 06 12 18 24 30 36 42 48" #"06 09" # 6 9 12 24 36 48"
-export VX_OBS_LIST="WWMCA" #"SATCORPS MERRA2 ERA5 WWMCA"
+export FCST_TIME_LIST="36" #00 06 12 18 24 30 36 42 48" #"06 09" # 6 9 12 24 36 48"
+export VX_OBS_LIST="SAT_WWMCA_MEAN" #"SATCORPS MERRA2 ERA5 WWMCA SAT_WWMCA_MEAN"
 export VX_VAR_LIST="totalCloudFrac" #"binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
@@ -73,10 +73,13 @@ export MET_EXE_ROOT=/glade/p/ral/jntp/MET/MET_releases/9.0/bin
 export MET_CONFIG=/glade/scratch/`whoami`/cloud_vx/static/MET/met_config
 export DATAROOT=/glade/scratch/`whoami`/cloud_vx
 #export FCST_DIR=/gpfs/u/home/schwartz/cloud_verification/GFS_grib_0.25deg  #GFS model
-#export FCST_DIR=/glade/scratch/schwartz/MPAS/30km_mesh/cold_start  # MPAS model, 30-km forecasts, interpolated to 0.25 degrees
-export FCST_DIR=/glade/scratch/schwartz/GALWEM                    # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017), "GALWEM" is 0.25 degree from Air Force in 2020-2021
+export FCST_DIR=/glade/scratch/schwartz/MPAS/30km_mesh/cold_start  # MPAS model, 30-km forecasts, interpolated to 0.25 degrees
+#export FCST_DIR=/glade/scratch/schwartz/GALWEM                    # GALWEM17 and GALWEM and models (GALWEM 17 is 17-km GALWEM from 2017), "GALWEM" is 0.25 degree from Air Force in 2020-2021
 export RAW_OBS=/glade/scratch/schwartz/OBS
-export MODEL="GALWEM" # Options are "GFS", "MPAS", "GALWEM17", or "GALWEM". Also, set to "WWMCA" if you want to treat WWMCA as forecast, and, say, SATCORPS as obs.
+export MODEL="MPAS" #"GALWEM" # Options are "GFS", "MPAS", "GALWEM17", or "GALWEM". Also, set to "WWMCA" if you want to treat WWMCA as forecast, and, say, SATCORPS as obs.
+
+export INCORPORATE_OBS_ERROR=false # If true (lowercase) then take random draws from obs error and add to forecast cloud fractions
+   export OBS_ERROR_FILE="/glade/u/home/schwartz/cloud_verification/ob_errors.pk"  # If $INCORPORATE_OBS_ERROR=true, the location of the obs error file
 
 # Print run parameters
 ${ECHO}
@@ -280,15 +283,33 @@ for DOMAIN in ${DOMAIN_LIST}; do
           OBS_FILE=${RAW_OBS}/${VX_OBS}/${VX_OBS}_${VDATE}.nc
         elif  [ ${VX_OBS} == "WWMCA" ]; then
           OBS_FILE=${RAW_OBS}/${VX_OBS}/WWMCA_${VDATE}00_ECE15_M.GR1
+        elif  [ ${VX_OBS} == "SAT_WWMCA_MEAN" ]; then
+          OBS_FILE=${RAW_OBS}/${VX_OBS}/totcldfra_${VDATE}.nc
         fi
 
+	# Make sure obs file exists
 	if [ ! -e ${OBS_FILE} ]; then
 	    ${ECHO} "ERROR: Could not find obs file: ${OBS_FILE}"
 	    exit 1
 	fi
 	
-        ${MKDIR} -p ${workdir}/${VX_VAR}/${VX_OBS}
-	cd ${workdir}/${VX_VAR}/${VX_OBS}
+        # Deal with observation error file; make final working directory
+        if [ $INCORPORATE_OBS_ERROR == "true" ]; then
+	   if [ ! -e ${OBS_ERROR_FILE} ]; then
+	      ${ECHO} "ERROR: OBS_ERROR_FILE, ${OBS_ERROR_FILE} does not exist"
+	      exit 1
+	   else
+              outdir=${workdir}/${VX_VAR}/${VX_OBS}_obsError
+              ${MKDIR} -p $outdir
+	      cd $outdir
+	      ln -sf ${OBS_ERROR_FILE} . # link just to have a record of it
+	   fi
+        else
+           outdir=${workdir}/${VX_VAR}/${VX_OBS}
+           ${MKDIR} -p $outdir
+	   cd $outdir
+        fi
+
         ${CP} ${DATAROOT}/bin/python_stuff.py .
 
         # CSS get the verification thresholds.
@@ -331,6 +352,10 @@ met_data = python_stuff.getDataArray(dataFile,dataSource,variable,${i})
 #attrs = python_stuff.getAttrArray(dataSource,variable,'${YYYYMMDD}','${HHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}') # CSS this seems more correct???
 #attrs = dict.getAttrArray(obsSource,variable,'${VYYYYMMDD}','${VHHMMSS}','${VYYYYMMDD}','${VHHMMSS}','${VHHMMSS}')
 attrs = python_stuff.getAttrArray(dataSource,variable,'${START_TIME}','${VDATE}')
+
+if "${INCORPORATE_OBS_ERROR}" == "true" and ${i} == 1:
+   fcstData = met_data
+   met_data = python_stuff.obsError(fcstData,'${OBS_ERROR_FILE}',${VDATE})
 EOF
 
 	   # For the forecast, run the python script OUTSIDE OF MET, while MET crashes with python pygrib routines
@@ -346,14 +371,14 @@ EOF
         done # loop over i=1,2, once for forecast, another for obs
         
         if [[ `echo $CONFIG_FILE | grep -i "gridstat" | wc -l` == 1 ]]; then # CSS note the double brackets in the if statement
-	   ${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat ${FCST_FILE} PYTHON_NUMPY ${CONFIG_FILE} -outdir  ${workdir}/${VX_VAR}/${VX_OBS} -v 2"
+	   ${ECHO} "CALLING: ${MET_EXE_ROOT}/grid_stat ${FCST_FILE} PYTHON_NUMPY ${CONFIG_FILE} -outdir  ${outdir} -v 2"
 
 	   # Run grid_stat
 	   ${MET_EXE_ROOT}/grid_stat \
 	     $FCST_FILE \
 	     PYTHON_NUMPY \
 	     ${CONFIG_FILE} \
-	     -outdir ${workdir}/${VX_VAR}/${VX_OBS} \
+	     -outdir ${outdir} \
 	     -v 2
 
 	   error=$?
@@ -365,7 +390,7 @@ EOF
 	   # TODO: This is temporary plotting using MET executable.
 	   # Run plot_data_plane
 	   ${MET_EXE_ROOT}/plot_data_plane PYTHON_NUMPY \
-	     ${workdir}/${VX_VAR}/${VX_OBS}/${VX_OBS}_${VX_VAR}_${START_TIME}_f${FCST_HRS}.ps \
+	     ${outdir}/${VX_OBS}_${VX_VAR}_${START_TIME}_f${FCST_HRS}.ps \
 	     -title ${VX_OBS}_${VX_VAR}_${START_TIME}_f${FCST_HRS} \
 	     -color_table /glade/p/ral/jntp/MET/MET_releases/8.1/met-8.1.1/data/colortables/NCL_colortables/wh-bl-gr-ye-re.ctable \
 	     'name="python_script_obs.py";'
@@ -373,12 +398,12 @@ EOF
 
         # CSS run MODE
         if [[ `echo $CONFIG_FILE | grep -i "mode" | wc -l` == 1 ]]; then # CSS note the double brackets in the if statement
-	   ${ECHO} "CALLING: ${MET_EXE_ROOT}/mode      ${FCST_FILE} PYTHON_NUMPY ${CONFIG_FILE} -outdir  ${workdir}/${VX_VAR}/${VX_OBS} -v 2"
+	   ${ECHO} "CALLING: ${MET_EXE_ROOT}/mode      ${FCST_FILE} PYTHON_NUMPY ${CONFIG_FILE} -outdir  ${outdir} -v 2"
 	   ${MET_EXE_ROOT}/mode      \
 	     $FCST_FILE \
 	     PYTHON_NUMPY \
 	     ${CONFIG_FILE} \
-	     -outdir ${workdir}/${VX_VAR}/${VX_OBS} \
+	     -outdir ${outdir} \
 	     -v 2
         fi
 
