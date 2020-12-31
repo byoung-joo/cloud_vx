@@ -731,7 +731,12 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefini
          fcstLow,fcstMid,fcstHigh,fcstTotCldFra = getFcstCloudFrac(fcstCldfra,pressure,psfc,layerDefinitions) # get low/mid/high/total forecast cloud fractions for each ob
          nc_fid2.close()
 
-	 # modify QC data based on correspondence between forecast and obs. qcData used to select good data later
+	 # Modify QC data based on correspondence between forecast and obs. qcData used to select good data later
+         # It's possible that there are multiple forecast layers, such that fcstLow,fcstMid,fcstHigh are all > $cldfraThresh
+         # However, GOES-16 CTP doesn't really account for layering.  So, we need to remove layered clouds from the forecast, 
+	 #   focusing only on the layers that we asked for when doing {low,mid,high}Only conditions
+	 # The "|" is symbol for "np.logcal_or"
+
          yes = 2.0
          no  = 0.0
          cldfraThresh = 20.0 # percent
@@ -745,10 +750,13 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefini
             elif condition.lower().strip() == 'cloudyOnly'.lower(): # cloudy in both forecast and obs
                qcData = np.where( (fcstTotCldFra >= cldfraThresh) & (thisGOESData > 0.0), qcData, missing_values)
             elif condition.lower().strip() == 'lowOnly'.lower(): # low clouds in both forecast and obs
+               fcstLow = np.where( (fcstMid >= cldfraThresh) | ( fcstHigh >= cldfraThresh), missing_values, fcstLow) # remove mid, high
                qcData = np.where( (fcstLow >= cldfraThresh) & ( thisGOESData >= PTOP_LOW), qcData, missing_values)
             elif condition.lower().strip() == 'midOnly'.lower(): # mid clouds in both forecast and obs
+               fcstMid = np.where( (fcstLow >= cldfraThresh) | ( fcstHigh >= cldfraThresh), missing_values, fcstMid) # remove low, high
                qcData = np.where( (fcstMid >= cldfraThresh) & (thisGOESData <  PTOP_LOW) & (thisGOESData >= PTOP_MID),   qcData, missing_values)
             elif condition.lower().strip() == 'highOnly'.lower(): # high clouds in both forecast and obs
+               fcstHigh = np.where( (fcstLow >= cldfraThresh) | ( fcstMid >= cldfraThresh), missing_values, fcstHigh) # remove mid, high
                qcData = np.where( (fcstHigh >= cldfraThresh) & (thisGOESData <  PTOP_MID) & (thisGOESData >= PTOP_HIGH), qcData, missing_values)
             elif condition.lower().strip() == 'cloudEventLow'.lower():
                if dataSource == 1: this_var = np.where( fcstLow      >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
