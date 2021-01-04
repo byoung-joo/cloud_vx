@@ -64,7 +64,7 @@ export MET_PYTHON_EXE=`which python` #export MET_PYTHON_EXE=/glade/u/apps/ch/opt
 # Vars used for manual testing of the script
 export START_TIME=2020072300 #2017060500 #2018110100
 export FCST_TIME_LIST="36" #00 06 12 18 24 30 36 42 48" #"06 09" # 6 9 12 24 36 48"
-export VX_OBS_LIST="SAT_WWMCA_MEAN" #"SATCORPS MERRA2 ERA5 WWMCA SAT_WWMCA_MEAN"
+export VX_OBS_LIST="SATCORPS" #"SATCORPS MERRA2 ERA5 WWMCA SAT_WWMCA_MEAN"
 export VX_VAR_LIST="totalCloudFrac" #"binaryCloud" #lowCloudFrac" #"totalCloudFrac lowCloudFrac midCloudFrac highCloudFrac binaryCloud" # cloudTopTemp cloudTopPres cloudBaseHeight cloudTopHeight
 export DOMAIN_LIST="global"
 export GRID_VX="FCST"
