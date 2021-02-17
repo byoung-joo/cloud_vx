@@ -89,7 +89,7 @@ verifVariablesModel = {
 }
 
 cloudFracCatThresholds = '>0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0' # MET format string
-brightnessTempThresholds = '<280.0, <275.0, <273.15, <270.0, <265.0, <260.0, <255.0, <250.0, <245.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0, <=SFP1, <=SFP5, <=SFP10'
+brightnessTempThresholds = '<280.0, <275.0, <273.15, <270.0, <265.0, <260.0, <255.0, <250.0, <245.0, <240.0, <235.0, <230.0, <225.0, <220.0, <215.0, <210.0, <=SFP1, <=SFP5, <=SFP10, <=SFP25, <=SFP50, >=SFP50, >=SFP75, >=SFP90, >=SFP95, >=SFP99'
 verifVariables = {
    'binaryCloud'    : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'SAT_WWMCA_MEAN':['Mean_WWMCA_SATCORPS'], 'units':'NA',  'thresholds':'>0.0', 'interpMethod':'nearest' },
    'totalCloudFrac' : { 'MERRA2':['CLDTOT'], 'SATCORPS':['cloud_percentage_level'],      'ERA5':['TCC'], 'WWMCA':[totalCloudFrac_WWMCA], 'SAT_WWMCA_MEAN':['Mean_WWMCA_SATCORPS'], 'units':'%',   'thresholds':cloudFracCatThresholds, 'interpMethod':'bilin' },
@@ -441,7 +441,7 @@ def getDataArray(inputFile,source,variable,dataSource):
 
    return met_data
 
-def obsError(fcstData,obsErrorFile,validDate):
+def obsError(fcstData,obsErrorFile,validDate,dataSource):
 
    print('Adding noise to the cloud fraction fields')
    print('Using obsErrorFile',obsErrorFile)
@@ -456,10 +456,13 @@ def obsError(fcstData,obsErrorFile,validDate):
    shape = fcstData.shape
    fcst = fcstData.flatten()
 
-   # Set random number seed
-   np.random.seed(int(validDate*.1)) # need a second condition?  different values for different experiments?
+   # Set random number seed based on valid time and model
+   if   dataSource.upper().strip() == 'MPAS':   ii = 10
+   elif dataSource.upper().strip() == 'GALWEM': ii = 20
+   elif dataSource.upper().strip() == 'GFS':    ii = 30
+   np.random.seed(int(validDate*.1 + ii)) 
 
-   # Find which bin the observation data is in
+   # Find which bin the data is in
    for i in range(0,len(binEdges)-1):
       idx = np.where( (fcst >= binEdges[i]) & (fcst < binEdges[i+1]) )[0]
       n = len(idx) # number of points in the ith bin
@@ -655,13 +658,18 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefini
       print('getting data from ',goesFile)
       myGOESInterpolator = NearestNDInterpolator(lonlatGOES,goesData)
 
-   # Get list of OMB files to process.  There is one file per processor.
-   # Need to get them in order so they are called in the same order for the 
-   # forecast and observed passes through this subroutine.
-   files = os.listdir(inputDir)
-   inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
-   inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
-   inputFiles.sort() # Get in order from low to high
+   # First check to see if there's a concatenated file with all obs.
+   #  If so, use that.  If not, have to process one file per processor, which takes a lot more time
+   if os.path.exists(inputDir+'/obsout_omb_'+satellite+'_ALL.nc4'):
+      inputFiles =  [inputDir+'/obsout_omb_'+satellite+'_ALL.nc4'] # needs to be in a list since we loop over inputFiles
+   else:
+      # Get list of OMB files to process.  There is one file per processor.
+      # Need to get them in order so they are called in the same order for the 
+      # forecast and observed passes through this subroutine.
+      files = os.listdir(inputDir)
+      inputFiles = fnmatch.filter(files,'obsout*_'+satellite+'*nc4') # returns relative path names
+      inputFiles = [inputDir+'/'+s for s in inputFiles] # add on directory name
+      inputFiles.sort() # Get in order from low to high
    if len(inputFiles) == 0: return -99999, -99999 # if no matching files, force a failure
 
    # Variable to pull for brightness temperature
@@ -736,7 +744,6 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefini
          # However, GOES-16 CTP doesn't really account for layering.  So, we need to remove layered clouds from the forecast, 
 	 #   focusing only on the layers that we asked for when doing {low,mid,high}Only conditions
 	 # The "|" is symbol for "np.logcal_or"
-
          yes = 2.0
          no  = 0.0
          cldfraThresh = 20.0 # percent
@@ -758,6 +765,12 @@ def point2point(source,inputDir,satellite,channel,goesFile,condition,layerDefini
             elif condition.lower().strip() == 'highOnly'.lower(): # high clouds in both forecast and obs
                fcstHigh = np.where( (fcstLow >= cldfraThresh) | ( fcstMid >= cldfraThresh), missing_values, fcstHigh) # remove mid, high
                qcData = np.where( (fcstHigh >= cldfraThresh) & (thisGOESData <  PTOP_MID) & (thisGOESData >= PTOP_HIGH), qcData, missing_values)
+            elif condition.lower().strip() == 'fcstLow'.lower(): # low clouds in forecast (layers possible); obs could be anything
+               qcData = np.where( fcstLow >= cldfraThresh , qcData, missing_values)
+            elif condition.lower().strip() == 'fcstMid'.lower(): # low clouds in forecast (layers possible); obs could be anything
+               qcData = np.where( fcstMid >= cldfraThresh , qcData, missing_values)
+            elif condition.lower().strip() == 'fcstHigh'.lower(): # low clouds in forecast (layers possible); obs could be anything
+               qcData = np.where( fcstHigh >= cldfraThresh , qcData, missing_values)
             elif condition.lower().strip() == 'cloudEventLow'.lower():
                if dataSource == 1: this_var = np.where( fcstLow      >= cldfraThresh, yes, no ) # set cloudy points to 2, clear points to 0, use threshold of 1 in MET
                if dataSource == 2: this_var = np.where( thisGOESData >= PTOP_LOW, yes, no )
