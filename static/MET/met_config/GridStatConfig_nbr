@@ -73,7 +73,7 @@ fcst = {
 //          level      = [ "R01" ];
 
         //cat_thresh = ${thresholds};
-	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0 ];
+	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0, >SFP20, >SFP30, >SFP40, >SFP50, >SFP60, >SFP70, >SFP80 ];
       }
    ];
 // INFO: https://dtcenter.org/met/users/docs/users_guide/MET_Users_Guide_v8.0.pdf#page=59
@@ -105,7 +105,7 @@ obs = {
         name       = "python_script_obs.py";
 //      cat_thresh = [ >=100, >=50 ];
         //cat_thresh = ${thresholds};
-	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0 ];
+	cat_thresh = [ >0, <10.0, >=10.0, >=20.0, >=30.0, >=40.0, >=50.0, >=60.0, >=70.0, >=80.0, >=90.0, >SOP20, >SOP30, >SOP40, >SOP50, >SOP60, >SOP70, >SOP80 ];
       }
    ];
 }
