@@ -1,3 +1,5 @@
 # cloud_vx
 
-After clone, you need to run "0_run_sed.ksh" script to replace "REL_DIR" and "REL_USER" with yours.
+- This repository contains a collection of script and config files to run the Model Evaluation Tools (MET) verification software for a cloud-focused forecast verification.
+- To facilitate ingestion of the various datasets, especially the gridded ones, we heavily leveraged a “python embedding” capability available since version 8.1 of MET.
+- When using this feature, MET reads data as provided by a python script, greatly increasing MET’s flexibility and capabilities.
