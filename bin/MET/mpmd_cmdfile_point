@@ -1,0 +1,9 @@
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "00" CALIPSO > ./log/00.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "06" CALIPSO > ./log/06.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "12" CALIPSO > ./log/12.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "18" CALIPSO > ./log/18.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "24" CALIPSO > ./log/24.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "30" CALIPSO > ./log/30.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "36" CALIPSO > ./log/36.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "42" CALIPSO > ./log/42.CALIPSO.log
+ksh ./met_point_driver_manual_timeloop_mpmd.ksh "48" CALIPSO > ./log/48.CALIPSO.log
