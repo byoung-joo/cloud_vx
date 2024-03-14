@@ -74,7 +74,7 @@ for j, inputFile in enumerate(inputFiles):
 
       # get weighting function profile
       v = 'weightingfunction_of_atmosphere_layer_'+str(channel)
-      print 'Trying to read ',v,' from ',inputFile
+      print('Trying to read ',v,' from ',inputFile)
       read_var = np.array(nc_fid.variables[v])
       weightingFunction.append(read_var)
 
@@ -97,16 +97,16 @@ for j, inputFile in enumerate(inputFiles):
    for i in range(0,nlocs,10): # only plot every 10th profile
       print('about to plot for i = ',i)
       for c, channel in enumerate(channels):
-	 weightMaxIdx = weightingFunctionPMax[c][i]-1 # subtract 1 because indices start at 0
-	 pres = pressures[i,weightMaxIdx]
-	 labelString = 'channel '+str(channel)+': peak = '+str(pres)+' hPa'
-	 this_var = weightingFunction[c]
-	 ax.plot(np.flip(this_var[i,:],axis=0),yvals,colors[c],label=labelString) # flip because index 0 is top of model, and we want it to be bottom
+         weightMaxIdx = weightingFunctionPMax[c][i]-1 # subtract 1 because indices start at 0
+         pres = pressures[i,weightMaxIdx]
+         labelString = 'channel '+str(channel)+': peak = '+str(pres)+' hPa'
+         this_var = weightingFunction[c]
+         ax.plot(np.flip(this_var[i,:],axis=0),yvals,colors[c],label=labelString) # flip because index 0 is top of model, and we want it to be bottom
 
-	#clearBT  = clearSkyRad[c]
-	#allSkyBT = allSkyRad[c]
-	#diff = clearBT[i] - allSkyBT[i]
-	#print(diff)
+        #clearBT  = clearSkyRad[c]
+        #allSkyBT = allSkyRad[c]
+        #diff = clearBT[i] - allSkyBT[i]
+        #print(diff)
 
       ax.set_xlabel('Weighting function')
       ax.set_ylabel('Pressure (hPa)')
@@ -130,7 +130,7 @@ for j, inputFile in enumerate(inputFiles):
      #ax2.set_yticklabels(np.flip(pressures[i,0::2],axis=0)) # flip because index 0 is top of model, and we want it to be bottom
 
       for this_ax in [ax,ax2]:
-	 this_ax.label_outer()
+         this_ax.label_outer()
 
       # save the figure
       outname = satellite+'_profile_'+str(i)+'.pdf'
